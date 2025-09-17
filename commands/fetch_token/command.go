@@ -2,12 +2,14 @@ package fetch_token
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/alibaba_cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/aws"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -26,6 +28,11 @@ var (
 		Name:  "oidc-field",
 		Usage: "Fetch OIDC filed (id_token or access_token)",
 	}
+	stringFlagOutput = &cli.StringFlag{
+		Name:    "output",
+		Aliases: []string{"o"},
+		Usage:   "Output to file",
+	}
 	boolFlagForceNew = &cli.BoolFlag{
 		Name:    "force-new",
 		Aliases: []string{"N"},
@@ -38,6 +45,7 @@ func BuildCommand() *cli.Command {
 		stringFlagProfile,
 		stringFlagFormat,
 		stringFlagOidcField,
+		stringFlagOutput,
 		boolFlagForceNew,
 	}
 	return &cli.Command{
@@ -48,14 +56,15 @@ func BuildCommand() *cli.Command {
 			profile := context.String("profile")
 			format := context.String("format")
 			oidcField := context.String("oidc-field")
+			output := context.String("output")
 			forceNew := context.Bool("force-new")
 
-			return fetchToken(profile, format, oidcField, forceNew)
+			return fetchToken(profile, format, oidcField, output, forceNew)
 		},
 	}
 }
 
-func fetchToken(profile, format, oidcField string, forceNew bool) error {
+func fetchToken(profile, format, oidcField, output string, forceNew bool) error {
 	options := &cloud.FetchCloudStsOptions{
 		ForceNew: forceNew,
 	}
@@ -92,10 +101,35 @@ func fetchToken(profile, format, oidcField string, forceNew bool) error {
 	if stdOutputErr != nil {
 		return stdOutputErr
 	}
-	if printNewLine {
-		utils.Stdout.Println(stdOutput)
+	if output == "" {
+		if printNewLine {
+			utils.Stdout.Println(stdOutput)
+		} else {
+			utils.Stdout.Print(stdOutput)
+		}
 	} else {
-		utils.Stdout.Print(stdOutput)
+		// write to file output
+		err := writeFilePreservePerm(output, []byte(stdOutput), 0644)
+		if err != nil {
+			return errors.Errorf("Write to file: %s, error: %v", output, err)
+		}
 	}
 	return nil
+}
+
+func writeFilePreservePerm(filename string, data []byte, perm os.FileMode) error {
+	if _, err := os.Stat(filename); err == nil {
+		f, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC, 0)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		_, err = f.Write(data)
+		return err
+	} else if os.IsNotExist(err) {
+		return os.WriteFile(filename, data, perm)
+	} else {
+		// other error
+		return err
+	}
 }

@@ -1,7 +1,7 @@
 package constants
 
 const (
-	AlibabaCloudIdaasCliVersion = "0.1.0-preview5"
+	AlibabaCloudIdaasCliVersion = "0.1.0-preview6"
 
 	DefaultAudienceAlibabaCloudIdaas = "alibaba-cloud-idaas-v2"
 
