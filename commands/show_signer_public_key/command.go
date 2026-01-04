@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
 	"github.com/urfave/cli/v2"
 )
@@ -32,9 +33,9 @@ func BuildCommand() *cli.Command {
 }
 
 func showPublicKey(profile string) error {
-	profile, cloudStsConfig, err := config.FindProfile(profile)
+	profile, cloudStsConfig, err := config.FindProfile(profile, false)
 	if err != nil {
-		return fmt.Errorf("find profie %s error %s", profile, err)
+		return fmt.Errorf("find profile %s error %s", profile, err)
 	}
 	if cloudStsConfig == nil {
 		return fmt.Errorf("profile %s does not exist", profile)

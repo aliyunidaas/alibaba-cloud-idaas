@@ -1,13 +1,14 @@
 package clean_cache
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
-	"os"
-	"path/filepath"
 )
 
 func BuildCommand() *cli.Command {
@@ -41,6 +42,9 @@ func cleanCache() error {
 
 	cloudTokenCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.CategoryCloudToken)
 	deleteFiles(cloudTokenCacheDir, func(filename string) bool { return true })
+
+	tokenResponseCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.CategoryTokenResponse)
+	deleteFiles(tokenResponseCacheDir, func(filename string) bool { return true })
 
 	return nil
 }

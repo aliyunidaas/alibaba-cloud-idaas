@@ -12,8 +12,9 @@ import (
 )
 
 type FetchOidcTokenConfigOptions struct {
-	ForceNew       bool
-	FetchTokenType FetchOidcTokenType
+	ForceNew           bool
+	ForceNewCloudToken bool
+	FetchTokenType     FetchOidcTokenType
 }
 
 func FetchOidcToken(profile string, oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *FetchOidcTokenConfigOptions) (
@@ -34,7 +35,7 @@ func FetchOidcToken(profile string, oidcTokenProviderConfig *config.OidcTokenPro
 		IsContentExpired: func(s *utils.StringWithTime) bool {
 			return isContentExpired(options.FetchTokenType, s)
 		},
-		ForceNew: options.ForceNew,
+		ForceNew: options.ForceNew || options.ForceNewCloudToken,
 	}
 
 	cacheKey := fmt.Sprintf("%s_%s", profile, digest[0:32])
@@ -52,6 +53,7 @@ func fetchContent(oidcTokenProviderConfig *config.OidcTokenProviderConfig, optio
 	startTime := time.Now().Unix()
 	fetchOidcTokenOptions := &idp.FetchOidcTokenOptions{
 		ForceNew: options.ForceNew,
+		CacheKey: oidcTokenProviderConfig.GetCacheKey(),
 	}
 	tokenResponse, tokenResponseErr := idp.FetchTokenResponse(oidcTokenProviderConfig, fetchOidcTokenOptions)
 	if tokenResponseErr == nil && tokenResponse != nil {

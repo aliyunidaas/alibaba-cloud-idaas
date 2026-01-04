@@ -4,11 +4,12 @@ import (
 	"crypto"
 	"encoding/asn1"
 	"encoding/hex"
-	"github.com/pkg/errors"
 	"math/big"
 	"os/exec"
 	"runtime"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func OpenUrl(url string) error {

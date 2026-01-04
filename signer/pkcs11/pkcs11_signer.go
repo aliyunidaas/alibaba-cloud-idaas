@@ -5,14 +5,15 @@ package pkcs11
 
 import (
 	"crypto"
+	"io"
+	"log"
+	"os"
+
 	"github.com/ThalesGroup/crypto11"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
 	"github.com/miekg/pkcs11"
 	"github.com/pkg/errors"
-	"io"
-	"log"
-	"os"
 )
 
 const (

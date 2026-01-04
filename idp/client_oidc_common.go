@@ -17,6 +17,7 @@ import (
 
 type FetchOidcTokenOptions struct {
 	ForceNew bool
+	CacheKey string
 }
 
 func FetchOidcToken(profile string, oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *FetchOidcTokenOptions) (string, error) {
@@ -80,8 +81,13 @@ func fetchJwt(oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *
 	var fetchOidcTokenErr error
 	if hasOidcTokenProviderDeviceCode {
 		tokenResponse, fetchOidcTokenErr = FetchIdTokenDeviceCode(oidcTokenProviderConfig.OidcTokenProviderDeviceCode, options)
+		isAccessToken := oidcTokenProviderConfig.TokenType == oidc.TokenAccessToken
 		if tokenResponse != nil {
-			oidcToken = tokenResponse.IdToken
+			if isAccessToken {
+				oidcToken = tokenResponse.AccessToken
+			} else {
+				oidcToken = tokenResponse.IdToken
+			}
 		}
 	} else if hasOidcTokenProviderClientCredentials {
 		tokenResponse, fetchOidcTokenErr = FetchAccessTokenClientCredentials(oidcTokenProviderConfig.OidcTokenProviderClientCredentials)

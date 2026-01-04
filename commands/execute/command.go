@@ -9,6 +9,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/alibaba_cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/aws"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/cloud_account"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/common"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
@@ -30,7 +31,11 @@ var (
 	boolFlagForceNew = &cli.BoolFlag{
 		Name:    "force-new",
 		Aliases: []string{"N"},
-		Usage:   "Force fetch cloud STS token, ignore cache (including OpenId configuration etc.)",
+		Usage:   "Force fetch cloud token, ignore all cache",
+	}
+	boolFlagForceNewCloudToken = &cli.BoolFlag{
+		Name:  "force-new-cloud-token",
+		Usage: "Force fetch cloud token (lower cache enabled)",
 	}
 	boolFlagShowToken = &cli.BoolFlag{
 		Name:  "show-token",
@@ -43,6 +48,7 @@ func BuildCommand() *cli.Command {
 		stringFlagProfile,
 		stringFlagEnvRegion,
 		boolFlagForceNew,
+		boolFlagForceNewCloudToken,
 		boolFlagShowToken,
 	}
 	return &cli.Command{
@@ -54,16 +60,18 @@ func BuildCommand() *cli.Command {
 			profile := context.String("profile")
 			envRegion := context.String("env-region")
 			forceNew := context.Bool("force-new")
+			forceNewCloudToken := context.Bool("force-new-cloud-token")
 			showToken := context.Bool("show-token")
 			args := context.Args()
-			return execute(profile, showToken, forceNew, envRegion, args.Slice())
+			return execute(profile, showToken, forceNew, forceNewCloudToken, envRegion, args.Slice())
 		},
 	}
 }
 
-func execute(profile string, showToken, forceNew bool, envRegion string, args []string) error {
+func execute(profile string, showToken, forceNew, forceNewCloudToken bool, envRegion string, args []string) error {
 	options := &cloud.FetchCloudStsOptions{
-		ForceNew: forceNew,
+		ForceNew:           forceNew,
+		ForceNewCloudToken: forceNewCloudToken,
 	}
 	sts, cloudStsConfig, err := cloud.FetchCloudStsFromDefaultConfig(profile, options)
 	if err != nil {
@@ -89,6 +97,23 @@ func execute(profile string, showToken, forceNew bool, envRegion string, args []
 			return err
 		}
 		return executeCommand(args, environment)
+	}
+	cloudAccountToken, ok := sts.(*cloud_account.CloudAccountToken)
+	if ok {
+		credential := cloudAccountToken.CloudAccountRoleAccessCredential
+		if credential == nil {
+			return fmt.Errorf("invalid Cloud Account credential")
+		}
+		if cloudAccountToken.IsAlibabaCloudToken() {
+			alibabaCloudSts := cloud.ConvertCloudAccountTokenAlibabaCloudStsTokenToAlibabaStsToken(credential.AlibabaCloudStsToken)
+			environment, err := putEnvForStsToken(alibabaCloudSts, envRegion, cloudStsConfig)
+			if err != nil {
+				return err
+			}
+			return executeCommand(args, environment)
+		}
+
+		return fmt.Errorf("unknown Cloud Account token")
 	}
 
 	return fmt.Errorf("unknown cloud STS token type")

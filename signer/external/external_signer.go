@@ -6,11 +6,12 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"os/exec"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
+	"github.com/pkg/errors"
 )
 
 type ErrorResponse struct {

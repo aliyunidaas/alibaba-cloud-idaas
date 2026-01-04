@@ -3,9 +3,6 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,6 +10,10 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -86,7 +87,6 @@ func Fetch(client *http.Client, method, endpoint string, headers map[string]stri
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	req.Header.Set("X-aws-ec2-metadata-token-ttl-seconds", "3600")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -112,9 +112,10 @@ func BuildHttpClient() *http.Client {
 
 func getUserAgent() string {
 	userAgent := os.Getenv(constants.EnvUserAgent)
+	idaasV2VersionPart := fmt.Sprintf("AlibabaCloudIDaaS/2.0 AlibabaCloudIDaaSCli/%s", constants.AlibabaCloudIdaasCliVersion)
 	if userAgent != "" {
-		return userAgent + " AlibabaCloudIDaaS/2.0"
+		return userAgent + " " + idaasV2VersionPart
 	}
-	return fmt.Sprintf("%s/%s AlibabaCloudIDaaS/2.0",
-		runtime.GOOS, runtime.GOARCH)
+	return fmt.Sprintf("%s/%s %s",
+		runtime.GOOS, runtime.GOARCH, idaasV2VersionPart)
 }

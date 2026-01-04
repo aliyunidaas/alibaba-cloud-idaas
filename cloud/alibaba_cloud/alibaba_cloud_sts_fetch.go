@@ -2,6 +2,8 @@ package alibaba_cloud
 
 import (
 	"fmt"
+	"time"
+
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	sts20150401 "github.com/alibabacloud-go/sts-20150401/v2/client"
 	util "github.com/alibabacloud-go/tea-utils/v2/service"
@@ -13,11 +15,11 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idp"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type FetchStsWithOidcConfigOptions struct {
-	ForceNew bool
+	ForceNew           bool
+	ForceNewCloudToken bool
 }
 
 type FetchStsWithOidcOptions struct {
@@ -54,10 +56,11 @@ func FetchStsWithOidcConfig(profile string, alibabaCloudStsConfig *config.Alibab
 		FetchOidcToken: func() (string, error) {
 			fetchOidcTokenOptions := &idp.FetchOidcTokenOptions{
 				ForceNew: configOptions.ForceNew,
+				CacheKey: alibabaCloudStsConfig.OidcTokenProvider.GetCacheKey(),
 			}
 			return idp.FetchOidcToken(profile, alibabaCloudStsConfig.OidcTokenProvider, fetchOidcTokenOptions)
 		},
-		ForceNew: configOptions.ForceNew,
+		ForceNew: configOptions.ForceNew || configOptions.ForceNewCloudToken,
 	}
 	return FetchStsWithOidc(profile, alibabaCloudStsConfig, options)
 }
@@ -112,7 +115,7 @@ func fetchContent(options *FetchStsWithOidcOptions) (int, string, error) {
 	if *stsResponse.StatusCode != 200 {
 		idaaslog.Error.PrintfLn("failed assume role with OIDC, status: %v", stsResponse.StatusCode)
 		return int(*stsResponse.StatusCode), "", errors.Errorf(
-			"failed assume role with OIDC, status: %s", *stsResponse.StatusCode)
+			"failed assume role with OIDC, status: %d", *stsResponse.StatusCode)
 	}
 	credentials := stsResponse.Body.Credentials
 	stsToken := &StsToken{

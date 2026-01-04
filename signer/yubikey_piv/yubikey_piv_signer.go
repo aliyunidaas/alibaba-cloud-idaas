@@ -5,14 +5,15 @@ package yubikey_piv
 
 import (
 	"crypto"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
-	"github.com/pkg/errors"
 	"io"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
+	"github.com/pkg/errors"
 
 	"github.com/go-piv/piv-go/piv"
 )

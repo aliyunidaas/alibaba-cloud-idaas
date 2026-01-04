@@ -2,8 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"golang.org/x/crypto/ssh/terminal"
 	"os"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -67,6 +68,27 @@ func Green(str string, color bool) string {
 
 func Yellow(str string, color bool) string {
 	return WithColor(str, TermYellow, color)
+}
+
+func WBold(str string) string {
+	return WithColor(str, TermBold, true)
+}
+func WUnder(str string) string {
+	return WithColor(str, TermUnder, true)
+}
+func WRed(str string) string {
+	return WithColor(str, TermRed, true)
+}
+
+func WBlue(str string) string {
+	return WithColor(str, TermBlue, true)
+}
+func WGreen(str string) string {
+	return WithColor(str, TermGreen, true)
+}
+
+func WYellow(str string) string {
+	return WithColor(str, TermYellow, true)
 }
 
 func WithColor(str, termColor string, color bool) string {

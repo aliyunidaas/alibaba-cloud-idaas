@@ -2,26 +2,101 @@ package oidc
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
-	"net/http"
 )
 
 type FetchDeviceCodeFlowOptions struct {
 	ClientId     string
 	ClientSecret string
+	Scope        string
 	AutoOpenUrl  bool
 	ShowQrCode   bool
 	SmallQrCode  bool
 	ForceNew     bool
+	CacheKey     string
 }
 
 type FetchDeviceCodeOptions struct {
 	ClientId string
 	Scope    string
+}
+
+func TryFetchTokenViaRefreshToken(issuer string, cacheKey string, options *FetchDeviceCodeFlowOptions) *TokenResponse {
+	tokenResponseJsonStr, err := utils.ReadCacheFileWithEncryption(constants.CategoryTokenResponse, cacheKey)
+	if err != nil {
+		idaaslog.Debug.PrintfLn("Read token response category: %s, key: %s failed: %v", constants.CategoryTokenResponse, cacheKey, err)
+		return nil
+	}
+	if tokenResponseJsonStr == "" {
+		idaaslog.Debug.PrintfLn("Read token response category: %s, key: %s is empty", constants.CategoryTokenResponse, cacheKey)
+		return nil
+	}
+	var tokenResponse TokenResponse
+	err = json.Unmarshal([]byte(tokenResponseJsonStr), &tokenResponse)
+	if err != nil {
+		idaaslog.Warn.PrintfLn("Unmarshal token response failed: %v", err)
+		return nil
+	}
+	if tokenResponse.RefreshToken == "" {
+		idaaslog.Warn.PrintfLn("No refresh token found in token response")
+		return nil
+	}
+
+	fetchOpenIdConfigurationOptions := &FetchOpenIdConfigurationOptions{
+		ForceNew: options.ForceNew,
+	}
+	openIdConfiguration, err := FetchOpenIdConfiguration(issuer, fetchOpenIdConfigurationOptions)
+	if err != nil {
+		idaaslog.Warn.PrintfLn("Failed to fetch open id configuration, issuer: %s", issuer)
+		return nil
+	}
+
+	fetchTokenOptions := &FetchTokenOptions{
+		ClientId:     options.ClientId,
+		ClientSecret: options.ClientSecret,
+		GrantType:    GrantTypeRefreshToken,
+		RefreshToken: tokenResponse.RefreshToken,
+	}
+	newTokenResponse, tokenErrorResponse, err := FetchToken(openIdConfiguration.TokenEndpoint, fetchTokenOptions)
+	if err != nil {
+		idaaslog.Error.PrintfLn("Refresh token from endpoint: %s failed: %v", openIdConfiguration.TokenEndpoint, err)
+		return nil
+	}
+	if tokenErrorResponse != nil {
+		idaaslog.Error.PrintfLn("Refresh token from endpoint: %s failed: %v", openIdConfiguration.TokenEndpoint, tokenErrorResponse)
+		isTooManyRequests := tokenErrorResponse.StatusCode == http.StatusTooManyRequests
+		if !isTooManyRequests && tokenErrorResponse.StatusCode >= 400 && tokenErrorResponse.StatusCode < 500 {
+			idaaslog.Info.PrintfLn("Remove cache file %s %s", constants.CategoryTokenResponse, cacheKey)
+			err = utils.RemoveCacheFile(constants.CategoryTokenResponse, cacheKey)
+			if err != nil {
+				idaaslog.Warn.PrintfLn("Remove cache file %s %s failed: %v", constants.CategoryTokenResponse, cacheKey, err)
+			}
+		}
+		return nil
+	}
+	// save updated token response
+	SaveTokenResponseWithRefreshToken(cacheKey, newTokenResponse)
+	return newTokenResponse
+}
+
+func SaveTokenResponseWithRefreshToken(cacheKey string, tokenResponse *TokenResponse) {
+	if cacheKey != "" && tokenResponse != nil && tokenResponse.RefreshToken != "" {
+		tokenResponseJsonBytes, err := json.Marshal(tokenResponse)
+		if err != nil {
+			idaaslog.Warn.PrintfLn("Marshal token response failed: %v", err)
+			return
+		}
+		err = utils.WriteCacheFileWithEncryption(constants.CategoryTokenResponse, cacheKey, string(tokenResponseJsonBytes))
+		if err != nil {
+			idaaslog.Warn.PrintfLn("Write token response category: %s, key: %s failed: %v", constants.CategoryTokenResponse, cacheKey, err)
+		}
+	}
 }
 
 func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOptions) (*TokenResponse, error) {
@@ -38,6 +113,7 @@ func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOpti
 	deviceAuthorization := openIdConfiguration.DeviceAuthorizationEndpoint
 	fetchDeviceCodeOptions := &FetchDeviceCodeOptions{
 		ClientId: options.ClientId,
+		Scope:    options.Scope,
 	}
 	deviceCodeResponse, deviceCodeErrorResponse, err := FetchDeviceCodeWithRetry(deviceAuthorization, fetchDeviceCodeOptions)
 	if err != nil {
@@ -66,9 +142,9 @@ func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOpti
 			utils.Stderr.Fprintf("failed to open URL: %v\n", err)
 		}
 	}
-	utils.Stderr.Fprintf("Open URL: %s , input user code: %s\n",
+	utils.Stderr.Fprintf("Open URL: %s , then input user code: %s\n",
 		deviceCodeResponse.VerificationUri, deviceCodeResponse.UserCode)
-	utils.Stderr.Fprintf("or, direct open URL: %s\n", deviceCodeResponse.VerificationUriComplete)
+	utils.Stderr.Fprintf("or, direct open URL: %s <-- [RECOMMENDED]\n\n", deviceCodeResponse.VerificationUriComplete)
 
 	fetchTokenOptions := &FetchTokenOptions{
 		ClientId:     options.ClientId,
@@ -108,6 +184,7 @@ func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOpti
 			}
 		}
 		if tokenResponse != nil {
+			SaveTokenResponseWithRefreshToken(options.CacheKey, tokenResponse)
 			return tokenResponse, nil
 		}
 	}
@@ -138,13 +215,14 @@ func FetchDeviceCode(deviceAuthorization string, options *FetchDeviceCodeOptions
 	} else {
 		parameter["scope"] = options.Scope
 	}
+	idaaslog.Unsafe.PrintfLn("Fetching device code, authorization endpoint: %s, parameters: %v", deviceAuthorization, parameter)
 	statusCode, deviceCode, err := utils.PostHttp(deviceAuthorization, parameter)
 	if err != nil {
 		idaaslog.Error.PrintfLn("Failed to fetch device code, error: %v", err)
 		return nil, nil, err
 	}
 	if statusCode != http.StatusOK {
-		errorResponse, err := parseErrorResponse(deviceCode)
+		errorResponse, err := parseErrorResponse(statusCode, deviceCode)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "failed to parse error response: %s", deviceCode)
 		}

@@ -5,9 +5,10 @@ package pkcs11
 
 import (
 	"crypto"
+	"io"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
 	"github.com/pkg/errors"
-	"io"
 )
 
 func Pkcs11SingerEnabled() bool {

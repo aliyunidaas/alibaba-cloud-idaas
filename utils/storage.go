@@ -8,9 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
-	"github.com/pkg/errors"
 	"io"
 	"net"
 	"net/http"
@@ -20,11 +17,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
+	"github.com/pkg/errors"
 )
 
 const (
 	Seed1 = ".alibaba_cloud_idaas_seed1"
 	Seed2 = ".alibaba_cloud_idaas_seed2"
+)
+
+var (
+	// EnableEncryptWithMac more secure when turns on, but more stable when off
+	EnableEncryptWithMac = idaaslog.IsOn(os.Getenv(constants.EnvEnableEncryptWithMac))
 )
 
 type StringWithTime struct {
@@ -179,6 +185,10 @@ func ReadCacheWithEncryptionCallback(category, key string, cacheReadWrite CacheR
 	return "", errors.Wrapf(fetchContentErr, "read cache file [%s, %s], context: %+v", category, key, options.Context)
 }
 
+func RemoveCacheFile(category, key string) error {
+	return removeCacheFile(category, key)
+}
+
 func ReadCacheFileWithEncryption(category, key string) (string, error) {
 	ciphertext, err := readCacheFile(category, key)
 	if err != nil {
@@ -289,6 +299,10 @@ func getSeed2() []byte {
 }
 
 func getMacs() string {
+	idaaslog.Debug.PrintfLn("Enable encrypt with mac: %s", EnableEncryptWithMac)
+	if !EnableEncryptWithMac {
+		return "static_mac"
+	}
 	interfaces, err := net.Interfaces()
 	if err != nil {
 		// ignore error here
@@ -302,7 +316,20 @@ func getMacs() string {
 		macs = append(macs, iface.HardwareAddr.String())
 	}
 	slices.Sort(macs)
-	return strings.Join(macs, ",")
+	macAddress := strings.Join(macs, ",")
+	idaaslog.Unsafe.PrintfLn("Mac addresses: %s", macAddress)
+	return macAddress
+}
+
+func removeCacheFile(category, key string) error {
+	cacheFile, err := getCacheFile(category, key)
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(cacheFile); os.IsNotExist(err) {
+		return nil
+	}
+	return os.Remove(cacheFile)
 }
 
 func writeCacheFile(category, key string, content []byte) error {

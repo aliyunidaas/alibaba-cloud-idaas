@@ -1,13 +1,14 @@
 package show_cache
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli/v2"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 var (

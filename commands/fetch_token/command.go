@@ -7,6 +7,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/alibaba_cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/aws"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/cloud_account"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
@@ -22,7 +23,7 @@ var (
 	stringFlagFormat = &cli.StringFlag{
 		Name:    "format",
 		Aliases: []string{"f"},
-		Usage:   "Cloud STS format, values aliyuncli(default), ossutilv2",
+		Usage:   "Cloud STS format, values aliyuncli(default), ossutilv2, raw",
 	}
 	stringFlagOidcField = &cli.StringFlag{
 		Name:  "oidc-field",
@@ -36,7 +37,11 @@ var (
 	boolFlagForceNew = &cli.BoolFlag{
 		Name:    "force-new",
 		Aliases: []string{"N"},
-		Usage:   "Force fetch cloud STS token, ignore cache (including OpenId configuration etc.)",
+		Usage:   "Force fetch cloud token, ignore all cache",
+	}
+	boolFlagForceNewCloudToken = &cli.BoolFlag{
+		Name:  "force-new-cloud-token",
+		Usage: "Force fetch cloud token (lower cache enabled)",
 	}
 )
 
@@ -47,6 +52,7 @@ func BuildCommand() *cli.Command {
 		stringFlagOidcField,
 		stringFlagOutput,
 		boolFlagForceNew,
+		boolFlagForceNewCloudToken,
 	}
 	return &cli.Command{
 		Name:  "fetch-token",
@@ -58,15 +64,17 @@ func BuildCommand() *cli.Command {
 			oidcField := context.String("oidc-field")
 			output := context.String("output")
 			forceNew := context.Bool("force-new")
+			forceNewCloudToken := context.Bool("force-new-cloud-token")
 
-			return fetchToken(profile, format, oidcField, output, forceNew)
+			return fetchToken(profile, format, oidcField, output, forceNew, forceNewCloudToken)
 		},
 	}
 }
 
-func fetchToken(profile, format, oidcField, output string, forceNew bool) error {
+func fetchToken(profile, format, oidcField, output string, forceNew, forceNewCloudToken bool) error {
 	options := &cloud.FetchCloudStsOptions{
-		ForceNew: forceNew,
+		ForceNew:           forceNew,
+		ForceNewCloudToken: forceNewCloudToken,
 	}
 	oidcTokenType := oidc.GetOidcTokenType(oidcField)
 	options.FetchOidcTokenType = oidcTokenType
@@ -93,6 +101,15 @@ func fetchToken(profile, format, oidcField, output string, forceNew bool) error 
 			stdOutput = oidcToken.AccessToken
 		} else {
 			stdOutput, stdOutputErr = oidcToken.Marshal()
+		}
+	} else if cloudAccountToken, ok := sts.(*cloud_account.CloudAccountToken); ok {
+		if format == "raw" {
+			stdOutput, stdOutputErr = cloudAccountToken.Marshal()
+		} else if cloudAccountToken.IsAlibabaCloudToken() {
+			alibabaCloudSts := cloud.ConvertCloudAccountTokenAlibabaCloudStsTokenToAlibabaStsToken(cloudAccountToken.CloudAccountRoleAccessCredential.AlibabaCloudStsToken)
+			stdOutput, stdOutputErr = alibabaCloudSts.MarshalWithFormat(format)
+		} else {
+			stdOutput, stdOutputErr = cloudAccountToken.Marshal()
 		}
 	} else {
 		return fmt.Errorf("unknown cloud STS token type")

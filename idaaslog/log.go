@@ -3,8 +3,6 @@ package idaaslog
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,11 +10,14 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
+	"github.com/pkg/errors"
 )
 
 var (
-	UnsafeDebug        = isOn(os.Getenv(constants.EnvUnsafeDebug))
-	UnsafeConsolePrint = isOn(os.Getenv(constants.EnvUnsafeConsolePrint))
+	UnsafeDebug        = IsOn(os.Getenv(constants.EnvUnsafeDebug))
+	UnsafeConsolePrint = IsOn(os.Getenv(constants.EnvUnsafeConsolePrint))
 )
 
 type Level int
@@ -214,9 +215,4 @@ func clearLogFiles(logFiles []os.DirEntry, logCacheDir string) {
 		_ = os.Remove(filepath.Join(logCacheDir, file.DirEntry.Name()))
 		totalFileCount--
 	}
-}
-
-func isOn(val string) bool {
-	lowerVal := strings.ToLower(val)
-	return lowerVal == "1" || lowerVal == "true" || lowerVal == "yes" || lowerVal == "y" || lowerVal == "on"
 }

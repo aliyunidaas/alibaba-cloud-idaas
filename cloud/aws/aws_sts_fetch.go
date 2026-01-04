@@ -3,6 +3,8 @@ package aws
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/cloud_common"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
@@ -13,11 +15,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type FetchAwsStsWithOidcConfigOptions struct {
-	ForceNew bool
+	ForceNew           bool
+	ForceNewCloudToken bool
 }
 
 type FetchAwsStsWithOidcOptions struct {
@@ -44,10 +46,11 @@ func FetchAwsStsWithOidcConfig(profile string, awsCloudStsConfig *config.AwsClou
 		FetchOidcToken: func() (string, error) {
 			fetchOidcTokenOptions := &idp.FetchOidcTokenOptions{
 				ForceNew: configOptions.ForceNew,
+				CacheKey: awsCloudStsConfig.OidcTokenProvider.GetCacheKey(),
 			}
 			return idp.FetchOidcToken(profile, awsCloudStsConfig.OidcTokenProvider, fetchOidcTokenOptions)
 		},
-		ForceNew: configOptions.ForceNew,
+		ForceNew: configOptions.ForceNew || configOptions.ForceNewCloudToken,
 	}
 	return FetchStsWithOidc(profile, awsCloudStsConfig, options)
 }

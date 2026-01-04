@@ -24,7 +24,11 @@ var (
 	boolFlagForceNew = &cli.BoolFlag{
 		Name:    "force-new",
 		Aliases: []string{"N"},
-		Usage:   "Force fetch cloud STS token, ignore cache (including OpenID configuration etc.)",
+		Usage:   "Force fetch cloud token, ignore all cache",
+	}
+	boolFlagForceNewCloudToken = &cli.BoolFlag{
+		Name:  "force-new-cloud-token",
+		Usage: "Force fetch cloud token (lower cache enabled)",
 	}
 )
 
@@ -34,6 +38,7 @@ func BuildCommand() *cli.Command {
 		stringFlagOidcField,
 		boolFlagNoColor,
 		boolFlagForceNew,
+		boolFlagForceNewCloudToken,
 	}
 	return &cli.Command{
 		Name:  "show-token",
@@ -44,14 +49,16 @@ func BuildCommand() *cli.Command {
 			oidcField := context.String("oidc-field")
 			color := !context.Bool("no-color")
 			forceNew := context.Bool("force-new")
-			return fetchAndShowToken(profile, oidcField, forceNew, color)
+			forceNewCloudToken := context.Bool("force-new-cloud-token")
+			return fetchAndShowToken(profile, oidcField, forceNew, forceNewCloudToken, color)
 		},
 	}
 }
 
-func fetchAndShowToken(profile, oidcField string, forceNew bool, color bool) error {
+func fetchAndShowToken(profile, oidcField string, forceNew, forceNewCloudToken bool, color bool) error {
 	options := &cloud.FetchCloudStsOptions{
-		ForceNew: forceNew,
+		ForceNew:           forceNew,
+		ForceNewCloudToken: forceNewCloudToken,
 	}
 	oidcTokenType := oidc.GetOidcTokenType(oidcField)
 	options.FetchOidcTokenType = oidcTokenType

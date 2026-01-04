@@ -2,10 +2,12 @@ package serve
 
 import (
 	"fmt"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
-	"github.com/urfave/cli/v2"
 	"net/http"
 	"time"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
+	"github.com/pkg/errors"
+	"github.com/urfave/cli/v2"
 )
 
 var (
@@ -22,6 +24,10 @@ var (
 		Name:  "unsafe-listen-host",
 		Usage: "Default listen 127.0.0.1, use this flag can assign to 0.0.0.0",
 	}
+	stringFlagSsrfToken = &cli.StringFlag{
+		Name:  "ssrf-token",
+		Usage: "SSRF Token, send in query header X-Aliyun-Parameters-Secrets-Token",
+	}
 	boolFlagUnsafeDisableSsrf = &cli.BoolFlag{
 		Name:  "unsafe-disable-ssrf",
 		Usage: "Disable SSRF feature",
@@ -32,6 +38,7 @@ func BuildCommand() *cli.Command {
 	flags := []cli.Flag{
 		intFlagPort,
 		stringFlagUnsafeListenHost,
+		stringFlagSsrfToken,
 		boolFlagUnsafeDisableSsrf,
 	}
 	return &cli.Command{
@@ -39,6 +46,14 @@ func BuildCommand() *cli.Command {
 		Usage: "Serve local server",
 		Flags: flags,
 		Action: func(context *cli.Context) error {
+			ssrfToken := context.String("ssrf-token")
+			unsafeDisableSsrf := context.Bool("unsafe-disable-ssrf")
+			if ssrfToken == "" {
+				if !unsafeDisableSsrf {
+					return errors.New("SSRF token is required, unless --unsafe-disable-ssrf is set")
+				}
+			}
+
 			unsafeListenHost := context.String("unsafe-listen-host")
 			port := context.Int("port")
 			if port == 0 {
@@ -48,24 +63,30 @@ func BuildCommand() *cli.Command {
 				return fmt.Errorf("invalid port %d", port)
 			}
 			listenHostAndPort := getListenHostAndPort(unsafeListenHost, port)
-			return serve(listenHostAndPort, &ServeOptions{
-				SsrfToken: "", // TODO ...
+			return serve(listenHostAndPort, &HttpServeOptions{
+				SsrfToken: ssrfToken,
 			})
 		},
 	}
 }
 
-func serve(listenHostAndPort string, serveOptions *ServeOptions) error {
-	http.HandleFunc("/", handleRoot)
-	http.HandleFunc("/version", handleVersion)
-	http.HandleFunc("/cloud_token", handleCloudToken)
+func serve(listenHostAndPort string, serveOptions *HttpServeOptions) error {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		handleRoot(w, r, serveOptions)
+	})
+	http.HandleFunc("/version", func(w http.ResponseWriter, r *http.Request) {
+		handleVersion(w, r, serveOptions)
+	})
+	http.HandleFunc("/cloud_token", func(w http.ResponseWriter, r *http.Request) {
+		handleCloudToken(w, r, serveOptions)
+	})
 
 	fmt.Printf("Listen at %s...", listenHostAndPort)
 	return http.ListenAndServe(listenHostAndPort, nil)
 }
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	if !allowRequest(w, r, false) {
+func handleRoot(w http.ResponseWriter, r *http.Request, serveOptions *HttpServeOptions) {
+	if !isRequestAllowed(w, r, serveOptions) {
 		return
 	}
 	printResponse(w, http.StatusNotFound, ErrorResponse{
@@ -74,8 +95,8 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func handleVersion(w http.ResponseWriter, r *http.Request) {
-	if !allowRequest(w, r, false) {
+func handleVersion(w http.ResponseWriter, r *http.Request, serveOptions *HttpServeOptions) {
+	if !isRequestAllowed(w, r, serveOptions) {
 		return
 	}
 	printResponse(w, http.StatusOK, VersionResponse{

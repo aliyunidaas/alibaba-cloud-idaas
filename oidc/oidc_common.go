@@ -3,6 +3,7 @@ package oidc
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
@@ -17,11 +18,17 @@ const (
 	ClientAssertionTypeX509JwtBearer = "urn:cloud:idaas:params:oauth:client-assertion-type:x509-jwt-bearer"
 
 	GrantTypeClientCredentials = "client_credentials"
+	GrantTypeRefreshToken      = "refresh_token"
 	GrantTypeDeviceCode        = "urn:ietf:params:oauth:grant-type:device_code"
 
 	ErrorCodeAuthorizationPending = "authorization_pending"
 	ErrorCodeSlowDown             = "slow_down"
 	ErrorAccessDenied             = "access_denied"
+)
+
+const (
+	TokenIdToken     = "id_token"
+	TokenAccessToken = "access_token"
 )
 
 type FetchTokenCommonOptions struct {
@@ -60,6 +67,7 @@ type DeviceCodeResponse struct {
 // ErrorResponse
 // specification: RFC6749
 type ErrorResponse struct {
+	StatusCode       int    `json:"status_code"`
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
 	ErrorUri         string `json:"error_uri"`
@@ -94,6 +102,7 @@ type FetchTokenOptions struct {
 	ClientSecret string
 	GrantType    string
 	Scope        string
+	RefreshToken string
 
 	// for RFC8628
 	DeviceCode string
@@ -118,6 +127,20 @@ type FetchOpenIdConfigurationOptions struct {
 // - RFC8628
 // - RFC7523
 func FetchToken(tokenEndpoint string, options *FetchTokenOptions) (*TokenResponse, *ErrorResponse, error) {
+	statusCode, tokenResponse, errorResponse, err := innerFetchToken(tokenEndpoint, options)
+	isServerError := statusCode >= 500 && statusCode < 600
+	if isServerError {
+		idaaslog.Error.PrintfLn(
+			"server error in fetching token, try more once, status code: %d, token response: %v, error response: %v, err: %v",
+			statusCode, tokenResponse, errorResponse, err)
+		time.Sleep(100 * time.Millisecond)
+		statusCode, tokenResponse, errorResponse, err = innerFetchToken(tokenEndpoint, options)
+		idaaslog.Info.PrintfLn("retry fetch token status code: %d", statusCode)
+	}
+	return tokenResponse, errorResponse, err
+}
+
+func innerFetchToken(tokenEndpoint string, options *FetchTokenOptions) (int, *TokenResponse, *ErrorResponse, error) {
 	parameter := map[string]string{}
 	parameter["client_id"] = options.ClientId
 	if options.ClientSecret != "" {
@@ -131,6 +154,9 @@ func FetchToken(tokenEndpoint string, options *FetchTokenOptions) (*TokenRespons
 	}
 	if options.Scope != "" {
 		parameter["scope"] = options.Scope
+	}
+	if options.RefreshToken != "" {
+		parameter["refresh_token"] = options.RefreshToken
 	}
 	if options.ClientAssertionType != "" {
 		parameter["client_assertion_type"] = options.ClientAssertionType
@@ -151,23 +177,24 @@ func FetchToken(tokenEndpoint string, options *FetchTokenOptions) (*TokenRespons
 	statusCode, token, err := utils.PostHttp(tokenEndpoint, parameter)
 	if err != nil {
 		idaaslog.Error.PrintfLn("Failed to fetch token, error: %v", err)
-		return nil, nil, errors.Wrapf(err, "failed to fetch token from: %s", tokenEndpoint)
+		return statusCode, nil, nil, errors.Wrapf(err, "failed to fetch token from: %s", tokenEndpoint)
 	}
 	if statusCode != http.StatusOK {
 		idaaslog.Error.PrintfLn("Failed to fetch token, status: %d", statusCode)
-		errorResponse, err := parseErrorResponse(token)
+		idaaslog.Unsafe.PrintfLn("Failed fetch status code: %d, response: %s", statusCode, token)
+		errorResponse, err := parseErrorResponse(statusCode, token)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "failed to parse error response: %s", token)
+			return statusCode, nil, nil, errors.Wrapf(err, "failed to parse error response: %s", token)
 		}
-		return nil, errorResponse, nil
+		return statusCode, nil, errorResponse, nil
 	}
+	idaaslog.Unsafe.PrintfLn("Successfully fetched token: %s", token)
 	var tokenResponse TokenResponse
 	err = json.Unmarshal([]byte(token), &tokenResponse)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to unmarshal token response: %s", token)
+		return statusCode, nil, nil, errors.Wrapf(err, "failed to unmarshal token response: %s", token)
 	}
-	idaaslog.Unsafe.PrintfLn("Successfully fetched token: %=v", tokenResponse)
-	return &tokenResponse, nil, nil
+	return statusCode, &tokenResponse, nil, nil
 }
 
 // FetchOpenIdConfiguration
@@ -204,12 +231,13 @@ func FetchOpenIdConfiguration(issuer string, fetchOptions *FetchOpenIdConfigurat
 	return &openIdConfiguration, nil
 }
 
-func parseErrorResponse(response string) (*ErrorResponse, error) {
+func parseErrorResponse(statusCode int, response string) (*ErrorResponse, error) {
 	var errorResponse ErrorResponse
 	err := json.Unmarshal([]byte(response), &errorResponse)
 	if err != nil {
 		idaaslog.Error.PrintfLn("Failed to parse error response: %s, error: %v", response, err)
 		return nil, errors.Wrapf(err, "failed to unmarshal error response: %s", response)
 	}
+	errorResponse.StatusCode = statusCode
 	return &errorResponse, nil
 }

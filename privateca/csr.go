@@ -7,10 +7,11 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"io"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/signer/external"
 	"github.com/pkg/errors"
-	"io"
 )
 
 type ExCommandSignerWrap struct {

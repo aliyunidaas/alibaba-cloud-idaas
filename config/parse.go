@@ -3,12 +3,13 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
+	"github.com/pkg/errors"
 )
 
 func CreateCloudCredentialConfig(configFilename string) error {

@@ -8,6 +8,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/qr"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/serve"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/show_signer_public_key"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/validate_jwt"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/clean_cache"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/execute"
@@ -51,6 +52,7 @@ func innerMain() error {
 			show_signer_public_key.BuildCommand(),
 			serve.BuildCommand(),
 			qr.BuildCommand(),
+			validate_jwt.BuildCommand(),
 		},
 		Action: func(context *cli.Context) error {
 			printBanner()

@@ -66,6 +66,7 @@ func showProfiles(profileFilter string, color bool) error {
 		showAlibabaCloud(color, profile)
 		showAws(color, profile)
 		showOidc(color, profile)
+		showCloudAccount(color, profile)
 
 		println()
 	}
@@ -73,7 +74,7 @@ func showProfiles(profileFilter string, color bool) error {
 	if filterSkipCount == 0 {
 		fmt.Printf("Total found: %d profile(s)\n\n", len(keys))
 	} else {
-		fmt.Printf("Total found: %d profile(s), filter skipeed: %d, displayed: %d\n\n",
+		fmt.Printf("Total found: %d profile(s), filter skipped: %d, displayed: %d\n\n",
 			len(keys), filterSkipCount, len(keys)-filterSkipCount)
 	}
 
@@ -128,6 +129,17 @@ func showOidcTokenProvider(color bool, oidcTokenProvider *config.OidcTokenProvid
 
 		clientCredentials := oidcTokenProvider.OidcTokenProviderClientCredentials
 		showClientCredentials(color, clientCredentials)
+	}
+}
+
+func showCloudAccount(color bool, profile *config.CloudStsConfig) {
+	if profile.CloudAccount != nil {
+		cloudAccount := profile.CloudAccount
+		fmt.Printf(" %s: %s\n", pad("CloudAccountEndpoint"), utils.Green(cloudAccount.CloudAccountEndpoint, color))
+		fmt.Printf(" %s: %s\n", pad("CloudAccountRoleExternalId"), utils.Green(cloudAccount.CloudAccountRoleExternalId, color))
+
+		accessTokenProvider := cloudAccount.AccessTokenProvider
+		showOidcTokenProvider(color, accessTokenProvider)
 	}
 }
 

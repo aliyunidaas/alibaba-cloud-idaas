@@ -19,10 +19,14 @@ type CloudCredentialConfig struct {
 	Profile        map[string]*CloudStsConfig `json:"profile"` // required
 }
 
-func FindProfile(profile string) (string, *CloudStsConfig, error) {
-	tempProfile, cloudStsConfig := TryParseProfileFromInput(profile)
-	if cloudStsConfig != nil {
-		return tempProfile, cloudStsConfig, nil
+func FindProfile(profile string, ignoreParseFromProfile bool) (string, *CloudStsConfig, error) {
+	var tempProfile string
+	var cloudStsConfig *CloudStsConfig
+	if !ignoreParseFromProfile {
+		tempProfile, cloudStsConfig = TryParseProfileFromInput(profile)
+		if cloudStsConfig != nil {
+			return tempProfile, cloudStsConfig, nil
+		}
 	}
 	cloudCredentialConfig, err := LoadDefaultCloudCredentialConfig()
 	if err != nil {
@@ -76,11 +80,19 @@ func TryParseProfileFromInput(profile string) (string, *CloudStsConfig) {
 }
 
 type CloudStsConfig struct {
-	AlibabaCloud *AlibabaCloudStsConfig   `json:"alibaba_cloud_sts"` // optional, AlibabaCloud, Aws or OidcToken one required
-	Aws          *AwsCloudStsConfig       `json:"aws_sts"`           // optional, see AlibabaCloud
-	OidcToken    *OidcTokenProviderConfig `json:"oidc_token"`        // optional, AlibabaCloud
-	Environments []string                 `json:"environments"`      // optional, environments for execute
-	Comment      string                   `json:"comment"`           // optional
+	AlibabaCloud *AlibabaCloudStsConfig   `json:"alibaba_cloud_sts"`   // optional, AlibabaCloud, Aws, OidcToken or CloudAccount one required
+	Aws          *AwsCloudStsConfig       `json:"aws_sts"`             // optional, see AlibabaCloud
+	OidcToken    *OidcTokenProviderConfig `json:"oidc_token"`          // optional, see AlibabaCloud
+	CloudAccount *CloudAccountTokenConfig `json:"cloud_account_token"` // optional, see AlibabaCloud
+	Environments []string                 `json:"environments"`        // optional, environments for execute
+	Comment      string                   `json:"comment"`             // optional
+}
+
+type CloudAccountTokenConfig struct {
+	// Endpoint e.g. https://eiam-developerapi.cn-hangzhou.aliyuncs.com/v2/idaas_***/cloudAccountRoles/_/actions/obtainAccessCredential
+	CloudAccountEndpoint       string                   `json:"cloud_account_endpoint"`
+	CloudAccountRoleExternalId string                   `json:"cloud_account_role_external_id"`
+	AccessTokenProvider        *OidcTokenProviderConfig `json:"access_token_provider"`
 }
 
 type AlibabaCloudStsConfig struct {
@@ -102,9 +114,14 @@ type AwsCloudStsConfig struct {
 }
 
 type OidcTokenProviderConfig struct {
+	TokenType                          string                                    `json:"token_type"`         // for device_code, id_token[default], access_token
 	OidcTokenProviderClientCredentials *OidcTokenProviderClientCredentialsConfig `json:"client_credentials"` // optional *
 	OidcTokenProviderDeviceCode        *OidcTokenProviderDeviceCodeConfig        `json:"device_code"`        // optional *
 	// * only requires one
+}
+
+func (o *OidcTokenProviderConfig) GetCacheKey() string {
+	return fmt.Sprintf("%s_%s", o.GetId(), o.Digest()[0:32])
 }
 
 func (c *OidcTokenProviderConfig) GetId() string {

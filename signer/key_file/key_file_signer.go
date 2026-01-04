@@ -8,13 +8,14 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
 	"github.com/pkg/errors"
 	"github.com/youmark/pkcs8"
-	"io"
-	"os"
-	"strings"
 )
 
 type KeyFileSigner struct {

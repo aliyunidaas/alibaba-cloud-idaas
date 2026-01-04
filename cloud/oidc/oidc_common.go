@@ -29,11 +29,6 @@ const (
 	FetchAccessToken
 )
 
-const (
-	TokenIdToken     = "id_token"
-	TokenAccessToken = "access_token"
-)
-
 func (t FetchOidcTokenType) IsFetchIdToken() bool {
 	return t == FetchIdToken || t == FetchDefault
 }
@@ -43,9 +38,9 @@ func (t FetchOidcTokenType) IsFetchAccessToken() bool {
 }
 
 func GetOidcTokenType(oidcField string) FetchOidcTokenType {
-	if oidcField == TokenIdToken {
+	if oidcField == oidc.TokenIdToken {
 		return FetchIdToken
-	} else if oidcField == TokenAccessToken {
+	} else if oidcField == oidc.TokenAccessToken {
 		return FetchAccessToken
 	} else {
 		return FetchDefault

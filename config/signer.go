@@ -42,7 +42,7 @@ func NewExJwtSignerFromConfig(conf *ExSingerConfig) (*signer.ExJwtSigner, error)
 		return nil, errors.New("requires at least one; pkcs11, yubikey_piv or external_command")
 	}
 	if len(confs) > 1 {
-		return nil, errors.Errorf("only one config may be specified, setted: %v", confs)
+		return nil, errors.Errorf("only one config may be specified, found: %v", confs)
 	}
 
 	var exSigner signer.ExSigner

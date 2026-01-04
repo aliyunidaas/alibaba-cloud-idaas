@@ -4,10 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/idp"
 	"strings"
 	"time"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/idp"
 )
 
 // GenerateRoleSessionName

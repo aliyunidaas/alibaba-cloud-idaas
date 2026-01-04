@@ -5,9 +5,10 @@ package yubikey_piv
 
 import (
 	"crypto"
+	"io"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
 	"github.com/pkg/errors"
-	"io"
 )
 
 func YubiKeyPivSingerEnabled() bool {

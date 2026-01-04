@@ -2,11 +2,14 @@ package serve
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 )
 
-type ServeOptions struct {
+const (
+	SSRF_TOKEN_HEADER = "X-Aliyun-Parameters-Secrets-Token"
+)
+
+type HttpServeOptions struct {
 	SsrfToken string
 }
 
@@ -30,18 +33,32 @@ func printResponse(w http.ResponseWriter, code int, response any) {
 	}
 }
 
-func allowRequest(w http.ResponseWriter, r *http.Request, allowGet bool) bool {
-	if allowGet && r.Method == http.MethodGet {
-		// just allow
-	} else if r.Method != http.MethodPost {
-		// for security purpose, we only allow POST method, GET requests are easy to make
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		_, _ = io.WriteString(w, "Not allowed.\n")
-		printResponse(w, http.StatusMethodNotAllowed, ErrorResponse{
-			Error:   "not_allowed",
-			Message: "Method not allowed.",
-		})
-		return false
+func isRequestAllowed(w http.ResponseWriter, r *http.Request, serveOptions *HttpServeOptions) bool {
+	if serveOptions.SsrfToken != "" {
+		ssrfTokenFromRequest := getSsrfToken(r)
+		if ssrfTokenFromRequest == "" {
+			printResponse(w, http.StatusUnauthorized, ErrorResponse{
+				Error:   "request_denied",
+				Message: SSRF_TOKEN_HEADER + " header or __ssrf_token parameter is required",
+			})
+			return false
+		}
+		if ssrfTokenFromRequest != serveOptions.SsrfToken {
+			printResponse(w, http.StatusForbidden, ErrorResponse{
+				Error:   "request_denied",
+				Message: "Invalid SSRF token",
+			})
+			return false
+		}
 	}
 	return true
+}
+
+func getSsrfToken(r *http.Request) string {
+	ssrfTokenFromHeader := r.Header.Get(SSRF_TOKEN_HEADER)
+	if ssrfTokenFromHeader != "" {
+		return ssrfTokenFromHeader
+	}
+	query := r.URL.Query()
+	return query.Get("__ssrf_token")
 }

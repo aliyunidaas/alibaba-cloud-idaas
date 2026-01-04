@@ -1,10 +1,11 @@
 package oidc
 
 import (
+	"time"
+
 	"github.com/aliyunidaas/alibaba-cloud-idaas/signer"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type FetchTokenRfc7523Options struct {
