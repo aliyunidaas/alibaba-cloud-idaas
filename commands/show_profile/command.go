@@ -11,6 +11,11 @@ import (
 )
 
 var (
+	stringFlagConfig = &cli.StringFlag{
+		Name:    "config",
+		Aliases: []string{"c"},
+		Usage:   "IDaaS Config",
+	}
 	stringFlagProfileFilter = &cli.StringFlag{
 		Name:    "profile-filter",
 		Aliases: []string{"p"},
@@ -24,6 +29,7 @@ var (
 
 func BuildCommand() *cli.Command {
 	flags := []cli.Flag{
+		stringFlagConfig,
 		stringFlagProfileFilter,
 		boolFlagNoColor,
 	}
@@ -32,15 +38,16 @@ func BuildCommand() *cli.Command {
 		Usage: "Show profiles",
 		Flags: flags,
 		Action: func(context *cli.Context) error {
+			configFilename := context.String("config")
 			color := !context.Bool("no-color")
 			profileFilter := context.String("profile-filter")
-			return showProfiles(profileFilter, color)
+			return showProfiles(configFilename, profileFilter, color)
 		},
 	}
 }
 
-func showProfiles(profileFilter string, color bool) error {
-	cloudCredentialConfig, err := config.LoadDefaultCloudCredentialConfig()
+func showProfiles(configFilename, profileFilter string, color bool) error {
+	cloudCredentialConfig, err := config.LoadCloudCredentialConfig(configFilename)
 	if err != nil {
 		return err
 	}
@@ -135,7 +142,15 @@ func showOidcTokenProvider(color bool, oidcTokenProvider *config.OidcTokenProvid
 func showCloudAccount(color bool, profile *config.CloudStsConfig) {
 	if profile.CloudAccount != nil {
 		cloudAccount := profile.CloudAccount
-		fmt.Printf(" %s: %s\n", pad("CloudAccountEndpoint"), utils.Green(cloudAccount.CloudAccountEndpoint, color))
+		if cloudAccount.CloudAccountRegion != "" {
+			fmt.Printf(" %s: %s\n", pad("CloudAccountRegion"), utils.Green(cloudAccount.CloudAccountRegion, color))
+		}
+		if cloudAccount.CloudAccountInstanceId != "" {
+			fmt.Printf(" %s: %s\n", pad("CloudAccountInstanceId"), utils.Green(cloudAccount.CloudAccountInstanceId, color))
+		}
+		if cloudAccount.CloudAccountEndpoint != "" {
+			fmt.Printf(" %s: %s\n", pad("CloudAccountEndpoint"), utils.Green(cloudAccount.CloudAccountEndpoint, color))
+		}
 		fmt.Printf(" %s: %s\n", pad("CloudAccountRoleExternalId"), utils.Green(cloudAccount.CloudAccountRoleExternalId, color))
 
 		accessTokenProvider := cloudAccount.AccessTokenProvider

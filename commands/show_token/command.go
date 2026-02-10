@@ -8,6 +8,11 @@ import (
 )
 
 var (
+	stringFlagConfig = &cli.StringFlag{
+		Name:    "config",
+		Aliases: []string{"c"},
+		Usage:   "IDaaS Config",
+	}
 	stringFlagProfile = &cli.StringFlag{
 		Name:    "profile",
 		Aliases: []string{"p"},
@@ -34,6 +39,7 @@ var (
 
 func BuildCommand() *cli.Command {
 	flags := []cli.Flag{
+		stringFlagConfig,
 		stringFlagProfile,
 		stringFlagOidcField,
 		boolFlagNoColor,
@@ -45,17 +51,18 @@ func BuildCommand() *cli.Command {
 		Usage: "Show cloud STS token",
 		Flags: flags,
 		Action: func(context *cli.Context) error {
+			configFilename := context.String("config")
 			profile := context.String("profile")
 			oidcField := context.String("oidc-field")
 			color := !context.Bool("no-color")
 			forceNew := context.Bool("force-new")
 			forceNewCloudToken := context.Bool("force-new-cloud-token")
-			return fetchAndShowToken(profile, oidcField, forceNew, forceNewCloudToken, color)
+			return fetchAndShowToken(configFilename, profile, oidcField, forceNew, forceNewCloudToken, color)
 		},
 	}
 }
 
-func fetchAndShowToken(profile, oidcField string, forceNew, forceNewCloudToken bool, color bool) error {
+func fetchAndShowToken(configFilename, profile, oidcField string, forceNew, forceNewCloudToken bool, color bool) error {
 	options := &cloud.FetchCloudStsOptions{
 		ForceNew:           forceNew,
 		ForceNewCloudToken: forceNewCloudToken,
@@ -63,7 +70,7 @@ func fetchAndShowToken(profile, oidcField string, forceNew, forceNewCloudToken b
 	oidcTokenType := oidc.GetOidcTokenType(oidcField)
 	options.FetchOidcTokenType = oidcTokenType
 
-	sts, _, err := cloud.FetchCloudStsFromDefaultConfig(profile, options)
+	sts, _, err := cloud.FetchCloudStsFromDefaultConfig(configFilename, profile, options)
 	if err != nil {
 		return err
 	}

@@ -33,12 +33,15 @@ func FetchCloudAccountTokenWithOidcConfig(profile string, cloudAccountTokenConfi
 	if cloudAccountTokenConfig.AccessTokenProvider == nil {
 		return nil, errors.New("AccessTokenProvider is required")
 	}
-	cloudAccountEndpoint := cloudAccountTokenConfig.CloudAccountEndpoint
+	cloudAccountEndpoint, cloudAccountEndpointErr := cloudAccountTokenConfig.GetCloudAccountEndpoint()
+	if cloudAccountEndpointErr != nil {
+		return nil, cloudAccountEndpointErr
+	}
 	if cloudAccountEndpoint == "" {
 		return nil, errors.New("CloudAccountEndpoint is required")
 	}
 	options := &FetchCloudAccountTokenWithOidcOptions{
-		Endpoint:       cloudAccountTokenConfig.CloudAccountEndpoint,
+		Endpoint:       cloudAccountEndpoint,
 		RoleExternalId: cloudAccountTokenConfig.CloudAccountRoleExternalId,
 		FetchAccessToken: func() (string, error) {
 			fetchOidcTokenOptions := &idp.FetchOidcTokenOptions{

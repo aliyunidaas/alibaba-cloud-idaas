@@ -43,6 +43,35 @@ Supported external signers:
 `~/.aliyun/alibaba-cloud-idaas.json`
 > `~` means `$HOME`
 
+### 🆕 AKless via Device Code Flow
+
+Fetch STS Token via IDaaS new AKless feature.
+
+```json
+{
+  "version": "1",
+  "profile": {
+    "aliyun-akless1": {
+      "cloud_account_token": {
+        "cloud_account_region": "cn-hangzhou",
+        "cloud_account_instance_id": "idaas_wrwsx*********************",
+        "cloud_account_role_external_id": "acs:ram::1391************:role/hatter-test-akless-role",
+        "access_token_provider":{
+          "device_code": {
+            "issuer": "https://ziw*****.aliyunidaas.com/api/v2/iauths_system/oauth2",
+            "client_id": "app_m7jks3********************",
+            "scope": "urn:cloud:idaas:pam|cloud_account_role:obtain_access_credential offline_access openid",
+            "auto_open_url": true,
+            "show_qr_code": true,
+            "small_qr_code": true
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ### Device Code Flow
 
 Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.

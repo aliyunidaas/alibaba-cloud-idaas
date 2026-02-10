@@ -15,6 +15,11 @@ import (
 )
 
 var (
+	stringFlagConfig = &cli.StringFlag{
+		Name:    "config",
+		Aliases: []string{"c"},
+		Usage:   "IDaaS Config",
+	}
 	stringFlagProfile = &cli.StringFlag{
 		Name:    "profile",
 		Aliases: []string{"p"},
@@ -28,6 +33,10 @@ var (
 	stringFlagOidcField = &cli.StringFlag{
 		Name:  "oidc-field",
 		Usage: "Fetch OIDC filed (id_token or access_token)",
+	}
+	stringFlagOidcFormat = &cli.StringFlag{
+		Name:  "oidc-format",
+		Usage: "OIDC token format, values type1(default) or type2",
 	}
 	stringFlagOutput = &cli.StringFlag{
 		Name:    "output",
@@ -47,9 +56,11 @@ var (
 
 func BuildCommand() *cli.Command {
 	flags := []cli.Flag{
+		stringFlagConfig,
 		stringFlagProfile,
 		stringFlagFormat,
 		stringFlagOidcField,
+		stringFlagOidcFormat,
 		stringFlagOutput,
 		boolFlagForceNew,
 		boolFlagForceNewCloudToken,
@@ -59,19 +70,21 @@ func BuildCommand() *cli.Command {
 		Usage: "Fetch cloud STS token",
 		Flags: flags,
 		Action: func(context *cli.Context) error {
+			configFilename := context.String("config")
 			profile := context.String("profile")
 			format := context.String("format")
 			oidcField := context.String("oidc-field")
+			oidcFormat := context.String("oidc-format")
 			output := context.String("output")
 			forceNew := context.Bool("force-new")
 			forceNewCloudToken := context.Bool("force-new-cloud-token")
 
-			return fetchToken(profile, format, oidcField, output, forceNew, forceNewCloudToken)
+			return fetchToken(configFilename, profile, format, oidcField, oidcFormat, output, forceNew, forceNewCloudToken)
 		},
 	}
 }
 
-func fetchToken(profile, format, oidcField, output string, forceNew, forceNewCloudToken bool) error {
+func fetchToken(configFilename, profile, format, oidcField, oidcFormat, output string, forceNew, forceNewCloudToken bool) error {
 	options := &cloud.FetchCloudStsOptions{
 		ForceNew:           forceNew,
 		ForceNewCloudToken: forceNewCloudToken,
@@ -79,7 +92,7 @@ func fetchToken(profile, format, oidcField, output string, forceNew, forceNewClo
 	oidcTokenType := oidc.GetOidcTokenType(oidcField)
 	options.FetchOidcTokenType = oidcTokenType
 
-	sts, _, err := cloud.FetchCloudStsFromDefaultConfig(profile, options)
+	sts, _, err := cloud.FetchCloudStsFromDefaultConfig(configFilename, profile, options)
 	if err != nil {
 		return err
 	}
@@ -100,7 +113,13 @@ func fetchToken(profile, format, oidcField, output string, forceNew, forceNewClo
 			printNewLine = false
 			stdOutput = oidcToken.AccessToken
 		} else {
-			stdOutput, stdOutputErr = oidcToken.Marshal()
+			if oidcFormat == "" || oidcFormat == "type1" {
+				stdOutput, stdOutputErr = oidcToken.Marshal()
+			} else if oidcFormat == "type2" {
+				stdOutput, stdOutputErr = oidcToken.ConvertToType2().Marshal()
+			} else {
+				return fmt.Errorf("unknown OIDC format " + oidcFormat)
+			}
 		}
 	} else if cloudAccountToken, ok := sts.(*cloud_account.CloudAccountToken); ok {
 		if format == "raw" {

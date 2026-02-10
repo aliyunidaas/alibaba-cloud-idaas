@@ -60,7 +60,7 @@ func showCache(category, name string) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to get user home dir")
 		}
-		cacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, category)
+		cacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, category)
 		logFiles, err := os.ReadDir(cacheDir)
 		if err != nil {
 			utils.Stderr.Fprintf("Read dir: %s failed: %s\n", cacheDir, err)

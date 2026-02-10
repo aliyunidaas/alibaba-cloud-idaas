@@ -29,21 +29,21 @@ func cleanCache() error {
 		return errors.Wrap(err, "failed to get user home dir")
 	}
 
-	logsCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.LogDir)
+	logsCacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, constants.LogDir)
 	deleteFiles(logsCacheDir, func(filename string) bool {
 		return !idaaslog.IsCurrentLog(filename)
 	})
 
-	oidcCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.CategoryOidc)
+	oidcCacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, constants.CategoryOidc)
 	deleteFiles(oidcCacheDir, func(filename string) bool { return true })
 
-	oidcTokenCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.CategoryOidcToken)
+	oidcTokenCacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, constants.CategoryOidcToken)
 	deleteFiles(oidcTokenCacheDir, func(filename string) bool { return true })
 
-	cloudTokenCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.CategoryCloudToken)
+	cloudTokenCacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, constants.CategoryCloudToken)
 	deleteFiles(cloudTokenCacheDir, func(filename string) bool { return true })
 
-	tokenResponseCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.CategoryTokenResponse)
+	tokenResponseCacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, constants.CategoryTokenResponse)
 	deleteFiles(tokenResponseCacheDir, func(filename string) bool { return true })
 
 	return nil

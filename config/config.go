@@ -7,6 +7,7 @@ import (
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -19,7 +20,7 @@ type CloudCredentialConfig struct {
 	Profile        map[string]*CloudStsConfig `json:"profile"` // required
 }
 
-func FindProfile(profile string, ignoreParseFromProfile bool) (string, *CloudStsConfig, error) {
+func FindProfile(configFilename, profile string, ignoreParseFromProfile bool) (string, *CloudStsConfig, error) {
 	var tempProfile string
 	var cloudStsConfig *CloudStsConfig
 	if !ignoreParseFromProfile {
@@ -28,7 +29,7 @@ func FindProfile(profile string, ignoreParseFromProfile bool) (string, *CloudSts
 			return tempProfile, cloudStsConfig, nil
 		}
 	}
-	cloudCredentialConfig, err := LoadDefaultCloudCredentialConfig()
+	cloudCredentialConfig, err := LoadCloudCredentialConfig(configFilename)
 	if err != nil {
 		return profile, nil, err
 	}
@@ -89,10 +90,26 @@ type CloudStsConfig struct {
 }
 
 type CloudAccountTokenConfig struct {
+	// Endpoint and region: https://api.aliyun.com/product/Eiam-developerapi
 	// Endpoint e.g. https://eiam-developerapi.cn-hangzhou.aliyuncs.com/v2/idaas_***/cloudAccountRoles/_/actions/obtainAccessCredential
+	CloudAccountRegion         string                   `json:"cloud_account_region"`
+	CloudAccountInstanceId     string                   `json:"cloud_account_instance_id"`
 	CloudAccountEndpoint       string                   `json:"cloud_account_endpoint"`
 	CloudAccountRoleExternalId string                   `json:"cloud_account_role_external_id"`
 	AccessTokenProvider        *OidcTokenProviderConfig `json:"access_token_provider"`
+}
+
+func (c *CloudAccountTokenConfig) GetCloudAccountEndpoint() (string, error) {
+	if c == nil {
+		return "", errors.New("nil cloud account token config")
+	}
+	if c.CloudAccountEndpoint != "" {
+		return c.CloudAccountEndpoint, nil
+	}
+	if c.CloudAccountRegion == "" || c.CloudAccountInstanceId == "" {
+		return "", errors.New("cloud account token config missing cloud account region or instance id")
+	}
+	return fmt.Sprintf("https://eiam-developerapi.%s.aliyuncs.com/v2/%s/cloudAccountRoles/_/actions/obtainAccessCredential", c.CloudAccountRegion, c.CloudAccountInstanceId), nil
 }
 
 type AlibabaCloudStsConfig struct {

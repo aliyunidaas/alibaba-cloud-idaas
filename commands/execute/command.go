@@ -18,6 +18,11 @@ import (
 )
 
 var (
+	stringFlagConfig = &cli.StringFlag{
+		Name:    "config",
+		Aliases: []string{"c"},
+		Usage:   "IDaaS Config",
+	}
 	stringFlagProfile = &cli.StringFlag{
 		Name:    "profile",
 		Aliases: []string{"p"},
@@ -45,6 +50,7 @@ var (
 
 func BuildCommand() *cli.Command {
 	flags := []cli.Flag{
+		stringFlagConfig,
 		stringFlagProfile,
 		stringFlagEnvRegion,
 		boolFlagForceNew,
@@ -57,23 +63,24 @@ func BuildCommand() *cli.Command {
 		Usage:   "Execute command",
 		Flags:   flags,
 		Action: func(context *cli.Context) error {
+			configFilename := context.String("config")
 			profile := context.String("profile")
 			envRegion := context.String("env-region")
 			forceNew := context.Bool("force-new")
 			forceNewCloudToken := context.Bool("force-new-cloud-token")
 			showToken := context.Bool("show-token")
 			args := context.Args()
-			return execute(profile, showToken, forceNew, forceNewCloudToken, envRegion, args.Slice())
+			return execute(configFilename, profile, showToken, forceNew, forceNewCloudToken, envRegion, args.Slice())
 		},
 	}
 }
 
-func execute(profile string, showToken, forceNew, forceNewCloudToken bool, envRegion string, args []string) error {
+func execute(configFilename, profile string, showToken, forceNew, forceNewCloudToken bool, envRegion string, args []string) error {
 	options := &cloud.FetchCloudStsOptions{
 		ForceNew:           forceNew,
 		ForceNewCloudToken: forceNewCloudToken,
 	}
-	sts, cloudStsConfig, err := cloud.FetchCloudStsFromDefaultConfig(profile, options)
+	sts, cloudStsConfig, err := cloud.FetchCloudStsFromDefaultConfig(configFilename, profile, options)
 	if err != nil {
 		return err
 	}

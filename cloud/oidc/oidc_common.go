@@ -21,6 +21,16 @@ type OidcToken struct {
 	ExpiresAt    int64  `json:"expires_at"`
 }
 
+type OidcTokenType2 struct {
+	IdToken      string    `json:"id_token,omitempty"`
+	TokenType    string    `json:"token_type,omitempty"`
+	Scope        string    `json:"scope,omitempty"`
+	AccessToken  string    `json:"access_token,omitempty"`
+	RefreshToken string    `json:"refresh_token,omitempty"`
+	ExpiresIn    int64     `json:"expires_in"`
+	ExpiresAt    time.Time `json:"expires_at"`
+}
+
 type FetchOidcTokenType int
 
 const (
@@ -77,6 +87,17 @@ func (t *OidcToken) Marshal() (string, error) {
 	return string(tokenBytes), nil
 }
 
+func (t *OidcTokenType2) Marshal() (string, error) {
+	if t == nil {
+		return "null", nil
+	}
+	tokenBytes, err := json.Marshal(t)
+	if err != nil {
+		return "", errors.Wrap(err, "marshal OIDC token failed")
+	}
+	return string(tokenBytes), nil
+}
+
 func UnmarshalOidcToken(token string) (*OidcToken, error) {
 	var oidcToken OidcToken
 	err := json.Unmarshal([]byte(token), &oidcToken)
@@ -105,6 +126,22 @@ func ParseIdTokenPayload(idToken string) (*IdTokenPayload, error) {
 		return nil, errors.New("invalid ID token")
 	}
 	return &idTokenPayload, nil
+}
+
+func (t *OidcToken) ConvertToType2() *OidcTokenType2 {
+	expireAtUnixTimestamp := t.ExpiresAt
+	if expireAtUnixTimestamp == 0 {
+		expireAtUnixTimestamp = time.Now().Unix() + t.ExpiresIn - 3
+	}
+	return &OidcTokenType2{
+		IdToken:      t.IdToken,
+		TokenType:    t.TokenType,
+		Scope:        t.Scope,
+		AccessToken:  t.AccessToken,
+		RefreshToken: t.RefreshToken,
+		ExpiresIn:    t.ExpiresAt,
+		ExpiresAt:    time.Unix(expireAtUnixTimestamp, 0),
+	}
 }
 
 func (t *OidcToken) IsValidAtLeastThreshold(fetchTokenType FetchOidcTokenType, thresholdDuration time.Duration) bool {

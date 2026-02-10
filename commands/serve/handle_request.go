@@ -25,7 +25,7 @@ func handleCloudToken(w http.ResponseWriter, r *http.Request, serveOptions *Http
 		ForceNewCloudToken:     forceNewCloudToken == "true",
 		IgnoreParseFromProfile: true,
 	}
-	sts, _, err := cloud.FetchCloudStsFromDefaultConfig(profile, options)
+	sts, _, err := cloud.FetchCloudStsFromDefaultConfig("", profile, options)
 	if err != nil {
 		printResponse(w, http.StatusInternalServerError, ErrorResponse{
 			Error:   "internal_error",

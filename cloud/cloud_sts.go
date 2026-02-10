@@ -19,8 +19,8 @@ type FetchCloudStsOptions struct {
 	FetchOidcTokenType     oidc.FetchOidcTokenType
 }
 
-func FetchCloudStsFromDefaultConfig(profile string, options *FetchCloudStsOptions) (any, *config.CloudStsConfig, error) {
-	profile, cloudStsConfig, err := config.FindProfile(profile, options.IgnoreParseFromProfile)
+func FetchCloudStsFromDefaultConfig(configFilename, profile string, options *FetchCloudStsOptions) (any, *config.CloudStsConfig, error) {
+	profile, cloudStsConfig, err := config.FindProfile(configFilename, profile, options.IgnoreParseFromProfile)
 	if err != nil {
 		return nil, cloudStsConfig, fmt.Errorf("find profile `%s` error: %s", profile, err)
 	}

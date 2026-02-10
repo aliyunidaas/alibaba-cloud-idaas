@@ -356,7 +356,7 @@ func getCacheFile(category, key string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "get home dir failed")
 	}
-	cacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, category)
+	cacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, category)
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
 		mkdirErr := os.MkdirAll(cacheDir, 0755)
 		if mkdirErr != nil {

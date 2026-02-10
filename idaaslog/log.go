@@ -164,7 +164,7 @@ func getLogFile(key string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	logCacheDir := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasDir, constants.LogDir)
+	logCacheDir := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigIdaasDir, constants.LogDir)
 	if _, err := os.Stat(logCacheDir); os.IsNotExist(err) {
 		mkdirErr := os.MkdirAll(logCacheDir, 0755)
 		if mkdirErr != nil {

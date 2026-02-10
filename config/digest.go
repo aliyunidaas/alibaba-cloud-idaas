@@ -19,7 +19,7 @@ func (c *CloudAccountTokenConfig) Digest() string {
 	if c == nil {
 		return ""
 	}
-	return digest(c.CloudAccountEndpoint, c.CloudAccountRoleExternalId, c.AccessTokenProvider.Digest())
+	return digest(c.CloudAccountRegion, c.CloudAccountInstanceId, c.CloudAccountEndpoint, c.CloudAccountRoleExternalId, c.AccessTokenProvider.Digest())
 }
 
 func (c *AlibabaCloudStsConfig) Digest() string {

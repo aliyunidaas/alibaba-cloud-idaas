@@ -10,6 +10,11 @@ import (
 )
 
 var (
+	stringFlagConfig = &cli.StringFlag{
+		Name:    "config",
+		Aliases: []string{"c"},
+		Usage:   "IDaaS Config",
+	}
 	stringFlagProfile = &cli.StringFlag{
 		Name:    "profile",
 		Aliases: []string{"p"},
@@ -19,6 +24,7 @@ var (
 
 func BuildCommand() *cli.Command {
 	flags := []cli.Flag{
+		stringFlagConfig,
 		stringFlagProfile,
 	}
 	return &cli.Command{
@@ -26,14 +32,15 @@ func BuildCommand() *cli.Command {
 		Usage: "Show ex signer public key",
 		Flags: flags,
 		Action: func(context *cli.Context) error {
+			configFilename := context.String("config")
 			profile := context.String("profile")
-			return showPublicKey(profile)
+			return showPublicKey(configFilename, profile)
 		},
 	}
 }
 
-func showPublicKey(profile string) error {
-	profile, cloudStsConfig, err := config.FindProfile(profile, false)
+func showPublicKey(configFilename, profile string) error {
+	profile, cloudStsConfig, err := config.FindProfile(configFilename, profile, false)
 	if err != nil {
 		return fmt.Errorf("find profile %s error %s", profile, err)
 	}
@@ -56,32 +63,47 @@ func printClientAssertionSignerPublicKey(cloudStsConfig *config.CloudStsConfig) 
 			oidcTokenProvider = cloudStsConfig.Aws.OidcTokenProvider
 		}
 	}
-	if oidcTokenProvider != nil && oidcTokenProvider.OidcTokenProviderClientCredentials != nil {
+	if cloudStsConfig.CloudAccount != nil {
+		if cloudStsConfig.CloudAccount.AccessTokenProvider != nil {
+			oidcTokenProvider = cloudStsConfig.CloudAccount.AccessTokenProvider
+		}
+	}
+	if oidcTokenProvider != nil {
 		oidcTokenProviderClientCredentials := oidcTokenProvider.OidcTokenProviderClientCredentials
-
-		if oidcTokenProviderClientCredentials.ClientAssertionSinger != nil {
-			clientAssertionSinger := oidcTokenProviderClientCredentials.ClientAssertionSinger
-			extJwtSigner, err := config.NewExJwtSignerFromConfig(clientAssertionSinger)
-			if err != nil {
-				return err
+		if oidcTokenProviderClientCredentials != nil {
+			// client assertion signer
+			if oidcTokenProviderClientCredentials.ClientAssertionSinger != nil {
+				return printExSingerPublicKey(oidcTokenProviderClientCredentials.ClientAssertionSinger)
 			}
-			extSinger := extJwtSigner.GetExtSinger()
-			publicKey, err := extSinger.Public()
-			if err != nil {
-				return err
+			// client assertion private CA signer
+			clientAssertionPrivateCaConfig := oidcTokenProviderClientCredentials.ClientAssertionPrivateCaConfig
+			if clientAssertionPrivateCaConfig != nil && clientAssertionPrivateCaConfig.CertificateKeySigner != nil {
+				return printExSingerPublicKey(clientAssertionPrivateCaConfig.CertificateKeySigner)
 			}
-			publicKeyDer, err := x509.MarshalPKIXPublicKey(publicKey)
-			if err != nil {
-				return err
-			}
-			publicKeyPem := pem.EncodeToMemory(&pem.Block{
-				Type:  "PUBLIC KEY",
-				Bytes: publicKeyDer,
-			})
-
-			fmt.Printf("%s", publicKeyPem)
-			return nil
 		}
 	}
 	return fmt.Errorf("ext signer not found")
+}
+
+func printExSingerPublicKey(exSingerConfig *config.ExSingerConfig) error {
+	extJwtSigner, err := config.NewExJwtSignerFromConfig(exSingerConfig)
+	if err != nil {
+		return err
+	}
+	extSinger := extJwtSigner.GetExtSinger()
+	publicKey, err := extSinger.Public()
+	if err != nil {
+		return err
+	}
+	publicKeyDer, err := x509.MarshalPKIXPublicKey(publicKey)
+	if err != nil {
+		return err
+	}
+	publicKeyPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyDer,
+	})
+
+	fmt.Printf("%s", publicKeyPem)
+	return nil
 }

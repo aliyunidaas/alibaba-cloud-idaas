@@ -39,18 +39,20 @@ func CreateCloudCredentialConfig(configFilename string) error {
 	return nil
 }
 
-func LoadDefaultCloudCredentialConfig() (*CloudCredentialConfig, error) {
-	configFilename, err := GetDefaultCloudCredentialConfigFile()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get default config file")
+func LoadCloudCredentialConfig(configFilename string) (*CloudCredentialConfig, error) {
+	if configFilename == "" {
+		var err error
+		configFilename, err = GetDefaultCloudCredentialConfigFile()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to get default config file")
+		}
 	}
-
 	config, err := ReadCloudCredentialConfig(configFilename)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read config file")
+		return nil, errors.Wrapf(err, "failed to read config file: %s", configFilename)
 	}
 	if config == nil {
-		return nil, fmt.Errorf("config file not found")
+		return nil, fmt.Errorf("config file: %s not found", configFilename)
 	}
 	return config, nil
 }
@@ -92,12 +94,16 @@ func ReadCloudCredentialConfig(configFilename string) (*CloudCredentialConfig, e
 }
 
 func GetDefaultCloudCredentialConfigFile() (string, error) {
+	defaultConfigFileFromEnv := os.Getenv(constants.EnvConfigFile)
+	if defaultConfigFileFromEnv != "" {
+		return defaultConfigFileFromEnv, nil
+	}
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get home dir")
 	}
 	idaaslog.Debug.PrintfLn("Home dir: %s", homeDir)
-	configFilename := filepath.Join(homeDir, constants.DotAliyunDir, constants.AlibabaCloudIdaasConfigFile)
+	configFilename := filepath.Join(homeDir, constants.ConfigRootDir, constants.ConfigFilename)
 	idaaslog.Debug.PrintfLn("Load default cloud credential config from: %s", configFilename)
 	return configFilename, nil
 }
