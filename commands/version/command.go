@@ -2,6 +2,7 @@ package version
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/urfave/cli/v2"
@@ -34,4 +35,8 @@ func GetVersion() string {
 	} else {
 		return Version
 	}
+}
+
+func IsPreRelease() bool {
+	return strings.Contains(Version, "-pre-release")
 }

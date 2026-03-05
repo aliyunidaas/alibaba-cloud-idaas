@@ -74,6 +74,7 @@ func showProfiles(configFilename, profileFilter string, color bool) error {
 		showAws(color, profile)
 		showOidc(color, profile)
 		showCloudAccount(color, profile)
+		showAgent(color, profile)
 
 		println()
 	}
@@ -145,15 +146,30 @@ func showCloudAccount(color bool, profile *config.CloudStsConfig) {
 		if cloudAccount.CloudAccountRegion != "" {
 			fmt.Printf(" %s: %s\n", pad("CloudAccountRegion"), utils.Green(cloudAccount.CloudAccountRegion, color))
 		}
-		if cloudAccount.CloudAccountInstanceId != "" {
-			fmt.Printf(" %s: %s\n", pad("CloudAccountInstanceId"), utils.Green(cloudAccount.CloudAccountInstanceId, color))
+		if cloudAccount.GetInstanceId() != "" {
+			fmt.Printf(" %s: %s\n", pad("InstanceId"), utils.Green(cloudAccount.GetInstanceId(), color))
 		}
-		if cloudAccount.CloudAccountEndpoint != "" {
-			fmt.Printf(" %s: %s\n", pad("CloudAccountEndpoint"), utils.Green(cloudAccount.CloudAccountEndpoint, color))
+		if cloudAccount.GetEndpoint() != "" {
+			fmt.Printf(" %s: %s\n", pad("Endpoint"), utils.Green(cloudAccount.GetEndpoint(), color))
 		}
 		fmt.Printf(" %s: %s\n", pad("CloudAccountRoleExternalId"), utils.Green(cloudAccount.CloudAccountRoleExternalId, color))
 
 		accessTokenProvider := cloudAccount.AccessTokenProvider
+		showOidcTokenProvider(color, accessTokenProvider)
+	}
+}
+
+func showAgent(color bool, profile *config.CloudStsConfig) {
+	if profile.Agent != nil {
+		agent := profile.Agent
+		if agent.InstanceId != "" {
+			fmt.Printf(" %s: %s\n", pad("InstanceId"), utils.Green(agent.InstanceId, color))
+		}
+		if agent.DeveloperApiEndpoint != "" {
+			fmt.Printf(" %s: %s\n", pad("Endpoint"), utils.Green(agent.DeveloperApiEndpoint, color))
+		}
+
+		accessTokenProvider := agent.AccessTokenProvider
 		showOidcTokenProvider(color, accessTokenProvider)
 	}
 }

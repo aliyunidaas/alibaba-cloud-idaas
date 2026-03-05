@@ -4,9 +4,11 @@ import (
 	"crypto"
 	"encoding/asn1"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -30,6 +32,21 @@ func OpenUrl(url string) error {
 		return errors.Errorf("unsupported platform")
 	}
 	return exec.Command(cmd, args...).Start()
+}
+
+func NormalizeDeveloperApiEndpoint(developerApiEndpoint string) string {
+	if developerApiEndpoint == "" {
+		return ""
+	}
+	if strings.HasSuffix(developerApiEndpoint, "/") {
+		developerApiEndpoint = developerApiEndpoint[:len(developerApiEndpoint)-1]
+	}
+	// endpoint starts with http:// should be deprecated
+	lowerDeveloperApiEndpoint := strings.ToLower(developerApiEndpoint)
+	if strings.HasPrefix(lowerDeveloperApiEndpoint, "https://") || strings.HasPrefix(lowerDeveloperApiEndpoint, "http://") {
+		return developerApiEndpoint
+	}
+	return fmt.Sprintf("https://%s", developerApiEndpoint)
 }
 
 func Sha256ToHex(message string) string {

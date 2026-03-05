@@ -85,6 +85,7 @@ type CloudStsConfig struct {
 	Aws          *AwsCloudStsConfig       `json:"aws_sts"`             // optional, see AlibabaCloud
 	OidcToken    *OidcTokenProviderConfig `json:"oidc_token"`          // optional, see AlibabaCloud
 	CloudAccount *CloudAccountTokenConfig `json:"cloud_account_token"` // optional, see AlibabaCloud
+	Agent        *AgentConfig             `json:"agent"`               // optional, see AlibabaCloud
 	Environments []string                 `json:"environments"`        // optional, environments for execute
 	Comment      string                   `json:"comment"`             // optional
 }
@@ -93,10 +94,32 @@ type CloudAccountTokenConfig struct {
 	// Endpoint and region: https://api.aliyun.com/product/Eiam-developerapi
 	// Endpoint e.g. https://eiam-developerapi.cn-hangzhou.aliyuncs.com/v2/idaas_***/cloudAccountRoles/_/actions/obtainAccessCredential
 	CloudAccountRegion         string                   `json:"cloud_account_region"`
-	CloudAccountInstanceId     string                   `json:"cloud_account_instance_id"`
-	CloudAccountEndpoint       string                   `json:"cloud_account_endpoint"`
+	CloudAccountInstanceId     string                   `json:"cloud_account_instance_id"` // use InstanceId
+	CloudAccountEndpoint       string                   `json:"cloud_account_endpoint"`    // use DeveloperApiEndpoint
+	InstanceId                 string                   `json:"instance_id"`               // recommend
+	DeveloperApiEndpoint       string                   `json:"developer_api_endpoint"`    // recommend
 	CloudAccountRoleExternalId string                   `json:"cloud_account_role_external_id"`
 	AccessTokenProvider        *OidcTokenProviderConfig `json:"access_token_provider"`
+}
+
+func (c *CloudAccountTokenConfig) GetInstanceId() string {
+	if c == nil {
+		return ""
+	}
+	if c.InstanceId != "" {
+		return c.InstanceId
+	}
+	return c.CloudAccountInstanceId
+}
+
+func (c *CloudAccountTokenConfig) GetEndpoint() string {
+	if c == nil {
+		return ""
+	}
+	if c.DeveloperApiEndpoint != "" {
+		return c.DeveloperApiEndpoint
+	}
+	return c.CloudAccountEndpoint
 }
 
 func (c *CloudAccountTokenConfig) GetCloudAccountEndpoint() (string, error) {
@@ -106,10 +129,33 @@ func (c *CloudAccountTokenConfig) GetCloudAccountEndpoint() (string, error) {
 	if c.CloudAccountEndpoint != "" {
 		return c.CloudAccountEndpoint, nil
 	}
-	if c.CloudAccountRegion == "" || c.CloudAccountInstanceId == "" {
+	instanceId := c.GetInstanceId()
+	if c.DeveloperApiEndpoint != "" && instanceId != "" {
+		return fmt.Sprintf("%s/v2/%s/cloudAccountRoles/_/actions/obtainAccessCredential", utils.NormalizeDeveloperApiEndpoint(c.DeveloperApiEndpoint), instanceId), nil
+	}
+	if c.CloudAccountRegion == "" || instanceId == "" {
 		return "", errors.New("cloud account token config missing cloud account region or instance id")
 	}
-	return fmt.Sprintf("https://eiam-developerapi.%s.aliyuncs.com/v2/%s/cloudAccountRoles/_/actions/obtainAccessCredential", c.CloudAccountRegion, c.CloudAccountInstanceId), nil
+	return fmt.Sprintf("https://eiam-developerapi.%s.aliyuncs.com/v2/%s/cloudAccountRoles/_/actions/obtainAccessCredential", c.CloudAccountRegion, instanceId), nil
+}
+
+type AgentConfig struct {
+	InstanceId           string                   `json:"instance_id"`
+	DeveloperApiEndpoint string                   `json:"developer_api_endpoint"`
+	AccessTokenProvider  *OidcTokenProviderConfig `json:"access_token_provider"`
+}
+
+func (c *AgentConfig) GetCredentialEndpoint() (string, error) {
+	if c == nil {
+		return "", errors.New("nil agent config")
+	}
+	if c.DeveloperApiEndpoint == "" || c.InstanceId == "" {
+		return "", errors.New("agent config missing instance_id or developer_api_endpoint")
+	}
+	// curl -X GET "https://eiam-developerapi.cn-hangzhou.aliyuncs.com/v2/idaas_wns****/credentials/_/actions/obtain?credentialIdentifier=cangyu_test" \
+	//	-H "Accept:application/json" \
+	//	-H "Authorization: Bearer eyJraW****"
+	return fmt.Sprintf("%s/v2/%s/credentials/_/actions/obtain", utils.NormalizeDeveloperApiEndpoint(c.DeveloperApiEndpoint), c.InstanceId), nil
 }
 
 type AlibabaCloudStsConfig struct {

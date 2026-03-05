@@ -5,9 +5,11 @@ import (
 	"os"
 	"strings"
 
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/openclaw_secret"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/qr"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/serve"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/show_signer_public_key"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/start_session"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/validate_jwt"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/clean_cache"
@@ -38,22 +40,27 @@ func main() {
 }
 
 func innerMain() error {
+	commands := []*cli.Command{
+		fetch_token.BuildCommand(),
+		show_token.BuildCommand(),
+		show_profile.BuildCommand(),
+		version.BuildCommand(),
+		clean_cache.BuildCommand(),
+		execute.BuildCommand(),
+		show_cache.BuildCommand(),
+		show_signer_public_key.BuildCommand(),
+		serve.BuildCommand(),
+		qr.BuildCommand(),
+		validate_jwt.BuildCommand(),
+		openclaw_secret.BuildCommand(),
+	}
+	if version.IsPreRelease() {
+		commands = append(commands, start_session.BuildCommand())
+	}
 	app := &cli.App{
-		Name:  "alibaba-cloud-idaas",
-		Usage: "Alibaba Cloud IDaaS command line util",
-		Commands: []*cli.Command{
-			fetch_token.BuildCommand(),
-			show_token.BuildCommand(),
-			show_profile.BuildCommand(),
-			version.BuildCommand(),
-			clean_cache.BuildCommand(),
-			execute.BuildCommand(),
-			show_cache.BuildCommand(),
-			show_signer_public_key.BuildCommand(),
-			serve.BuildCommand(),
-			qr.BuildCommand(),
-			validate_jwt.BuildCommand(),
-		},
+		Name:     "alibaba-cloud-idaas",
+		Usage:    "Alibaba Cloud IDaaS command line util",
+		Commands: commands,
 		Action: func(context *cli.Context) error {
 			printBanner()
 			printConfigFileAndFeatures()

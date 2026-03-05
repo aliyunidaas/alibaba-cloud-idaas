@@ -12,14 +12,22 @@ func (c *CloudStsConfig) Digest() string {
 		return ""
 	}
 	// Comment do not effect digest(cache)
-	return digest(c.AlibabaCloud.Digest(), c.Aws.Digest(), c.OidcToken.Digest(), c.CloudAccount.Digest())
+	return digest(c.AlibabaCloud.Digest(), c.Aws.Digest(), c.OidcToken.Digest(), c.CloudAccount.Digest(), c.Agent.Digest())
 }
 
 func (c *CloudAccountTokenConfig) Digest() string {
 	if c == nil {
 		return ""
 	}
-	return digest(c.CloudAccountRegion, c.CloudAccountInstanceId, c.CloudAccountEndpoint, c.CloudAccountRoleExternalId, c.AccessTokenProvider.Digest())
+	return digest(c.CloudAccountRegion, c.CloudAccountInstanceId, c.CloudAccountEndpoint,
+		c.InstanceId, c.DeveloperApiEndpoint, c.CloudAccountRoleExternalId, c.AccessTokenProvider.Digest())
+}
+
+func (c *AgentConfig) Digest() string {
+	if c == nil {
+		return ""
+	}
+	return digest(c.InstanceId, c.DeveloperApiEndpoint, c.AccessTokenProvider.Digest())
 }
 
 func (c *AlibabaCloudStsConfig) Digest() string {
