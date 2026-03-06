@@ -51,16 +51,31 @@ func FetchOidcToken(profile string, oidcTokenProviderConfig *config.OidcTokenPro
 func FetchTokenResponse(oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *FetchOidcTokenOptions) (*oidc.TokenResponse, error) {
 	hasOidcTokenProviderDeviceCode := oidcTokenProviderConfig.OidcTokenProviderDeviceCode != nil
 	hasOidcTokenProviderClientCredentials := oidcTokenProviderConfig.OidcTokenProviderClientCredentials != nil
+	hasOpenApi := oidcTokenProviderConfig.OpenApi != nil
 
-	if hasOidcTokenProviderDeviceCode && hasOidcTokenProviderClientCredentials {
-		return nil, errors.New(
-			"OidcTokenProviderDeviceCode and OidcTokenProviderClientCredentials cannot both be set")
+	var configSet []string
+	if hasOidcTokenProviderDeviceCode {
+		configSet = append(configSet, "OidcTokenProviderDeviceCode")
 	}
+	if hasOidcTokenProviderClientCredentials {
+		configSet = append(configSet, "OidcTokenProviderClientCredentials")
+	}
+	if hasOpenApi {
+		configSet = append(configSet, "OpenApi")
+	}
+
+	if len(configSet) > 1 {
+		return nil, errors.New(fmt.Sprintf("%s canot multiple configed", strings.Join(configSet, ", ")))
+	}
+
 	if hasOidcTokenProviderDeviceCode {
 		tokenResponse, fetchOidcTokenErr := FetchIdTokenDeviceCode(oidcTokenProviderConfig.OidcTokenProviderDeviceCode, options)
 		return tokenResponse, fetchOidcTokenErr
 	} else if hasOidcTokenProviderClientCredentials {
 		tokenResponse, fetchOidcTokenErr := FetchAccessTokenClientCredentials(oidcTokenProviderConfig.OidcTokenProviderClientCredentials)
+		return tokenResponse, fetchOidcTokenErr
+	} else if hasOpenApi {
+		tokenResponse, fetchOidcTokenErr := FetchAccessTokenOpenApi(oidcTokenProviderConfig.OpenApi)
 		return tokenResponse, fetchOidcTokenErr
 	} else {
 		return nil, errors.New(
@@ -71,10 +86,21 @@ func FetchTokenResponse(oidcTokenProviderConfig *config.OidcTokenProviderConfig,
 func fetchJwt(oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *FetchOidcTokenOptions) (int, string, error) {
 	hasOidcTokenProviderDeviceCode := oidcTokenProviderConfig.OidcTokenProviderDeviceCode != nil
 	hasOidcTokenProviderClientCredentials := oidcTokenProviderConfig.OidcTokenProviderClientCredentials != nil
+	hasOpenApi := oidcTokenProviderConfig.OpenApi != nil
 
-	if hasOidcTokenProviderDeviceCode && hasOidcTokenProviderClientCredentials {
-		return 600, "", errors.New(
-			"OidcTokenProviderDeviceCode and OidcTokenProviderClientCredentials cannot both be set")
+	var configSet []string
+	if hasOidcTokenProviderDeviceCode {
+		configSet = append(configSet, "OidcTokenProviderDeviceCode")
+	}
+	if hasOidcTokenProviderClientCredentials {
+		configSet = append(configSet, "OidcTokenProviderClientCredentials")
+	}
+	if hasOpenApi {
+		configSet = append(configSet, "OpenApi")
+	}
+
+	if len(configSet) > 1 {
+		return 600, "", errors.New(fmt.Sprintf("%s canot multiple configed", strings.Join(configSet, ", ")))
 	}
 	var oidcToken string
 	var tokenResponse *oidc.TokenResponse
@@ -91,6 +117,11 @@ func fetchJwt(oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *
 		}
 	} else if hasOidcTokenProviderClientCredentials {
 		tokenResponse, fetchOidcTokenErr = FetchAccessTokenClientCredentials(oidcTokenProviderConfig.OidcTokenProviderClientCredentials)
+		if tokenResponse != nil {
+			oidcToken = tokenResponse.AccessToken
+		}
+	} else if hasOpenApi {
+		tokenResponse, fetchOidcTokenErr = FetchAccessTokenOpenApi(oidcTokenProviderConfig.OpenApi)
 		if tokenResponse != nil {
 			oidcToken = tokenResponse.AccessToken
 		}

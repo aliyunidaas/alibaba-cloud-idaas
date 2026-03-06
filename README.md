@@ -40,7 +40,8 @@ Supported external signers:
 
 ## Config file location
 
-`~/.aliyun/alibaba-cloud-idaas.json`
+`~/.aliyun/alibaba-cloud-idaas.json` priority use when file exists
+or `~/.cloud_idaas/idaas-cli.json`
 > `~` means `$HOME`
 
 ### 🆕 AKless via Device Code Flow
@@ -244,7 +245,7 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
 Display help message `alibaba-cloud-idaas --help`.
 
 Subcommands:
-- `show-profiles` - Show profiles from `~/.aliyun/alibaba-cloud-idaas.json`
+- `show-profiles` - Show profiles from `~/.aliyun/alibaba-cloud-idaas.json` or `~/.cloud_idaas/idaas-cli.json`
 - `fetch-token`   - Fetch STS token, output STS Token to `stdout` in JSON format
 - `show-token`    - Show STS token
 - `clean-cache`   - Clean local cache, directory `~/.aliyun/alibaba-cloud-idaas/`
@@ -455,3 +456,74 @@ Note: You didn't use the -out option to save this plan, so Terraform can't guara
 ```
 
 You can start shell with `alibaba-cloud-idaas execute --profile aliyun2 bash`, then `terraform plan`.
+
+
+### OpenClaw
+
+> Specification: https://docs.openclaw.ai/gateway/secrets
+
+PKCS#7 config sample:
+```json
+{
+  "version": "1",
+  "current_profile": "agent1",
+  "profile": {
+    "agent1": {
+      "agent": {
+        "instance_id": "idaas_wrws**********************",
+        "developer_api_endpoint": "eiam-developerapi.cn-hangzhou.aliyuncs.com",
+        "access_token_provider": {
+          "client_credentials": {
+            "token_endpoint": "https://zi******.aliyunidaas.com/api/v2/iauths_system/oauth2/token",
+            "client_id": "app_ngfs**********************",
+            "scope": "urn:cloud:idaas:pam|.all",
+            "application_federated_credential_name": "alibabacloudp7",
+            "client_assertion_pkcs7": {
+              "provider": "alibaba_cloud",
+              "alibaba_cloud_mode": "normal",
+              "alibaba_cloud_idaas_instance_id": "idaas_wrws**********************"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+For example `alibaba-cloud-idaas` located in `/user/admin`, config OpenClaw like this:
+
+```json
+{
+  "secrets": {
+    "providers": {
+      "idaas": {
+        "source": "exec",
+        "command": "/home/admin/alibaba-cloud-idaas",
+        "args": ["openclaw-secret", "-p", "agent1"],
+        "passEnv": ["HOME"],
+        "jsonOnly": true
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "llm": {
+        "apiKey": { "source": "exec", "provider": "idaas", "id": "default_model" }
+      }
+    }
+  }
+}
+```
+
+
+Test `openclaw-secret` subcommand:
+```shell
+$ echo '{ "protocolVersion": 1, "provider": "idaas", "ids": ["default_model"] }' | alibaba-cloud-idaas openclaw-secret -p agent1
+{
+  "protocolVersion": 1,
+  "values": {
+    "default_model": "sk-aac*****************************"
+  }
+}
+```

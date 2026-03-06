@@ -180,6 +180,7 @@ type OidcTokenProviderConfig struct {
 	TokenType                          string                                    `json:"token_type"`         // for device_code, id_token[default], access_token
 	OidcTokenProviderClientCredentials *OidcTokenProviderClientCredentialsConfig `json:"client_credentials"` // optional *
 	OidcTokenProviderDeviceCode        *OidcTokenProviderDeviceCodeConfig        `json:"device_code"`        // optional *
+	OpenApi                            *OpenApiConfig                            `json:"open_api"`           // optional *
 	// * only requires one
 }
 
@@ -229,6 +230,40 @@ type OidcTokenProviderDeviceCodeConfig struct {
 	AutoOpenUrl  bool   `json:"auto_open_url"` // optional, auto open in browser, use in local device
 	ShowQrCode   bool   `json:"show_qr_code"`  // optional, show QR code, use in server
 	SmallQrCode  bool   `json:"small_qr_code"` // optional, show small QR code, may cause compatible issue
+}
+
+// OpenApiConfig
+// reference:
+// - https://github.com/aliyun/credentials-go
+// - https://api.aliyun.com/api/Eiam/2021-12-01/GenerateOauthToken?RegionId=cn-hangzhou
+type OpenApiConfig struct {
+	InstanceId      string   `json:"instance_id"`
+	ApplicationId   string   `json:"application_id"`
+	ScopeValues     []string `json:"scope_values"`
+	Audience        string   `json:"audience"`
+	OpenApiEndpoint string   `json:"open_api_endpoint"`
+
+	// Credential type, including access_key, sts, bearer, ecs_ram_role, ram_role_arn, rsa_key_pair, oidc_role_arn, credentials_uri
+	Type            string `json:"type"`
+	AccessKeyId     string `json:"access_key_id"`
+	AccessKeySecret string `json:"access_key_secret"`
+	SecurityToken   string `json:"security_token"`
+
+	// Used when the type is ram_role_arn or oidc_role_arn
+	OIDCProviderArn       string `json:"oidc_provider_arn"`
+	OIDCTokenFilePath     string `json:"oidc_token"`
+	RoleArn               string `json:"role_arn"`
+	RoleSessionName       string `json:"role_session_name"`
+	RoleSessionExpiration int    `json:"role_session_expiration"`
+	Policy                string `json:"policy"`
+	ExternalId            string `json:"external_id"`
+	STSEndpoint           string `json:"sts_endpoint"`
+
+	// Used when the type is ecs_ram_role
+	RoleName string `json:"role_name"`
+
+	// Used when the type is credentials_uri
+	Url string `json:"url"`
 }
 
 // Pkcs7Config

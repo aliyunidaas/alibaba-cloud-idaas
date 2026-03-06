@@ -3,6 +3,7 @@ package show_profile
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
@@ -137,6 +138,9 @@ func showOidcTokenProvider(color bool, oidcTokenProvider *config.OidcTokenProvid
 
 		clientCredentials := oidcTokenProvider.OidcTokenProviderClientCredentials
 		showClientCredentials(color, clientCredentials)
+
+		openApi := oidcTokenProvider.OpenApi
+		showOpenApi(color, openApi)
 	}
 }
 
@@ -193,6 +197,61 @@ func showClientCredentials(color bool, clientCredentials *config.OidcTokenProvid
 		showOidcTokenConfig(color, clientCredentials)
 		showPkcs7Config(color, clientCredentials)
 		showPrivateCaConfig(color, clientCredentials)
+	}
+}
+
+func showOpenApi(color bool, openCpiConfig *config.OpenApiConfig) {
+	if openCpiConfig != nil {
+		fmt.Printf(" %s: %s\n", pad("OIDC Token Provider"), utils.Green("Open API", color))
+		fmt.Printf(" - %s: %s\n", pad2("InstanceId"), utils.Green(openCpiConfig.InstanceId, color))
+		fmt.Printf(" - %s: %s\n", pad2("ApplicationId"), utils.Green(openCpiConfig.ApplicationId, color))
+		fmt.Printf(" - %s: %s\n", pad2("Audience"), utils.Green(openCpiConfig.Audience, color))
+		fmt.Printf(" - %s: %s\n", pad2("ScopeValues"), utils.Green(strings.Join(openCpiConfig.ScopeValues, ","), color))
+		if openCpiConfig.OpenApiEndpoint != "" {
+			fmt.Printf(" - %s: %s\n", pad2("OpenApiEndpoint"), utils.Green(openCpiConfig.OpenApiEndpoint, color))
+		}
+		if openCpiConfig.Type != "" {
+			fmt.Printf(" - %s: %s\n", pad2("Type"), utils.Green(openCpiConfig.Type, color))
+		}
+		if openCpiConfig.AccessKeyId != "" {
+			fmt.Printf(" - %s: %s\n", pad2("AccessKeyId"), utils.Green(openCpiConfig.AccessKeyId, color))
+		}
+		if openCpiConfig.AccessKeySecret != "" {
+			fmt.Printf(" - %s: %s\n", pad2("AccessKeySecret"), utils.Green("******", color))
+		}
+		if openCpiConfig.SecurityToken != "" {
+			fmt.Printf(" - %s: %s\n", pad2("SecurityToken"), utils.Green("******", color))
+		}
+		if openCpiConfig.OIDCProviderArn != "" {
+			fmt.Printf(" - %s: %s\n", pad2("OIDCProviderArn"), utils.Green(openCpiConfig.OIDCProviderArn, color))
+		}
+		if openCpiConfig.OIDCTokenFilePath != "" {
+			fmt.Printf(" - %s: %s\n", pad2("OIDCTokenFilePath"), utils.Green(openCpiConfig.OIDCTokenFilePath, color))
+		}
+		if openCpiConfig.RoleArn != "" {
+			fmt.Printf(" - %s: %s\n", pad2("RoleArn"), utils.Green(openCpiConfig.RoleArn, color))
+		}
+		if openCpiConfig.RoleSessionName != "" {
+			fmt.Printf(" - %s: %s\n", pad2("RoleSessionName"), utils.Green(openCpiConfig.RoleSessionName, color))
+		}
+		if openCpiConfig.RoleSessionExpiration != 0 {
+			fmt.Printf(" - %s: %s\n", pad2("RoleSessionExpiration"), utils.Green(strconv.Itoa(openCpiConfig.RoleSessionExpiration), color))
+		}
+		if openCpiConfig.Policy != "" {
+			fmt.Printf(" - %s: %s\n", pad2("Policy"), utils.Green(openCpiConfig.Policy, color))
+		}
+		if openCpiConfig.ExternalId != "" {
+			fmt.Printf(" - %s: %s\n", pad2("ExternalId"), utils.Green(openCpiConfig.ExternalId, color))
+		}
+		if openCpiConfig.STSEndpoint != "" {
+			fmt.Printf(" - %s: %s\n", pad2("STSEndpoint"), utils.Green(openCpiConfig.STSEndpoint, color))
+		}
+		if openCpiConfig.RoleName != "" {
+			fmt.Printf(" - %s: %s\n", pad2("RoleName"), utils.Green(openCpiConfig.RoleName, color))
+		}
+		if openCpiConfig.Url != "" {
+			fmt.Printf(" - %s: %s\n", pad2("Url"), utils.Green(openCpiConfig.Url, color))
+		}
 	}
 }
 

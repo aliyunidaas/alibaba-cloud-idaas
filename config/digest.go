@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 )
 
 func (c *CloudStsConfig) Digest() string {
@@ -51,7 +52,7 @@ func (c *OidcTokenProviderConfig) Digest() string {
 		return ""
 	}
 	return digest(c.TokenType, c.OidcTokenProviderClientCredentials.Digest(),
-		c.OidcTokenProviderDeviceCode.Digest())
+		c.OidcTokenProviderDeviceCode.Digest(), c.OpenApi.Digest())
 }
 
 func (c *OidcTokenProviderClientCredentialsConfig) Digest() string {
@@ -72,6 +73,17 @@ func (c *OidcTokenProviderDeviceCodeConfig) Digest() string {
 	}
 	// ClientSecret, AutoOpenUrl, ShowQrCode, SmallQrCode do not effect digest(cache)
 	return digest(c.Issuer, c.ClientId, c.Scope)
+}
+
+func (c *OpenApiConfig) Digest() string {
+	if c == nil {
+		return ""
+	}
+	return digest(c.InstanceId, c.ApplicationId, digest(c.ScopeValues...), c.Audience,
+		c.OpenApiEndpoint, c.Type, c.AccessKeyId, c.AccessKeySecret, c.SecurityToken,
+		c.OIDCProviderArn, c.OIDCTokenFilePath, c.RoleArn, c.RoleSessionName,
+		intToString(c.RoleSessionExpiration), c.Policy, c.ExternalId, c.STSEndpoint,
+		c.RoleName, c.Url)
 }
 
 func (c *Pkcs7Config) Digest() string {
@@ -142,6 +154,13 @@ func digest(args ...string) string {
 		h.Write([]byte(a))
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func intToString(i int) string {
+	if i == 0 {
+		return ""
+	}
+	return strconv.Itoa(i)
 }
 
 func fileModTime(filename string) string {
