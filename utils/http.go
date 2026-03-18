@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -14,6 +16,11 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/pkg/errors"
+)
+
+var (
+	UnsafeSkipCertificateVerification = idaaslog.IsOn(os.Getenv(constants.EnvUnsafeSkipCertificateVerification))
+	RootCertificates                  = os.Getenv(constants.EnvRootCertificates)
 )
 
 const (
@@ -105,9 +112,49 @@ func Fetch(client *http.Client, method, endpoint string, headers map[string]stri
 }
 
 func BuildHttpClient() *http.Client {
-	return &http.Client{
+	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
+	if UnsafeSkipCertificateVerification {
+		idaaslog.Warn.PrintfLn("Env %s is turned on, TLS certificate verification will be off", constants.EnvUnsafeSkipCertificateVerification)
+		transport := &http.Transport{TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		}}
+		client.Transport = transport
+	} else if RootCertificates != "" {
+		certPool, err := loadRootCertificates(RootCertificates)
+		if err != nil {
+			idaaslog.Error.PrintfLn("Error loading additional root certificates: %s", err)
+		}
+		if certPool != nil {
+			idaaslog.Info.PrintfLn("Additional root certificates are loaded from ca file: %s", RootCertificates)
+			transport := &http.Transport{TLSClientConfig: &tls.Config{
+				RootCAs: certPool,
+			}}
+			client.Transport = transport
+		}
+	}
+	return client
+}
+
+func loadRootCertificates(caFile string) (*x509.CertPool, error) {
+	if caFile == "" {
+		return nil, nil
+	}
+	caCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, errors.Errorf("failed to load system cert pool: %s", err.Error())
+	}
+
+	caCert, err := os.ReadFile(caFile)
+	if err != nil {
+		return nil, errors.Errorf("cannot read from ca file: %s, error: %s", caFile, err.Error())
+	}
+
+	if ok := caCertPool.AppendCertsFromPEM(caCert); !ok {
+		return nil, errors.Errorf("cannot add to cert pool from ca file: %s", caFile)
+	}
+	return caCertPool, nil
 }
 
 func getUserAgent() string {

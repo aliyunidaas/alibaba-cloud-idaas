@@ -12,7 +12,7 @@ var (
 )
 
 const (
-	AlibabaCloudIdaasCliVersion = "0.1.0-preview11"
+	AlibabaCloudIdaasCliVersion = "0.1.0-preview12"
 
 	DefaultAudienceAlibabaCloudIdaas = "alibaba-cloud-idaas-v2"
 
@@ -27,14 +27,16 @@ const (
 	// CategoryTokenResponse Token Response with Refresh Token
 	CategoryTokenResponse = "token_response"
 
-	EnvUserAgent            = "ALIBABA_CLOUD_IDAAS_USER_AGENT"
-	EnvUnsafeDebug          = "ALIBABA_CLOUD_IDAAS_UNSAFE_DEBUG"
-	EnvUnsafeConsolePrint   = "ALIBABA_CLOUD_IDAAS_UNSAFE_CONSOLE_PRINT"
-	EnvPkcs11Pin            = "ALIBABA_CLOUD_IDAAS_PKSC11_PIN"
-	EnvYubiKeyPin           = "ALIBABA_CLOUD_IDAAS_YUBIKEY_PIN"
-	EnvPkcs8Password        = "ALIBABA_CLOUD_IDAAS_PKCS8_PASSWORD"
-	EnvEnableEncryptWithMac = "ALIBABA_CLOUD_IDAAS_ENABLE_ENCRYPT_WITH_MAC"
-	EnvConfigFile           = "ALIBABA_CLOUD_IDAAS_CONFIG_FILE"
+	EnvUserAgent                         = "ALIBABA_CLOUD_IDAAS_USER_AGENT"
+	EnvUnsafeDebug                       = "ALIBABA_CLOUD_IDAAS_UNSAFE_DEBUG"
+	EnvUnsafeConsolePrint                = "ALIBABA_CLOUD_IDAAS_UNSAFE_CONSOLE_PRINT"
+	EnvPkcs11Pin                         = "ALIBABA_CLOUD_IDAAS_PKSC11_PIN"
+	EnvYubiKeyPin                        = "ALIBABA_CLOUD_IDAAS_YUBIKEY_PIN"
+	EnvPkcs8Password                     = "ALIBABA_CLOUD_IDAAS_PKCS8_PASSWORD"
+	EnvEnableEncryptWithMac              = "ALIBABA_CLOUD_IDAAS_ENABLE_ENCRYPT_WITH_MAC"
+	EnvConfigFile                        = "ALIBABA_CLOUD_IDAAS_CONFIG_FILE"
+	EnvRootCertificates                  = "ALIBABA_CLOUD_IDAAS_ROOT_CERTIFICATES"
+	EnvUnsafeSkipCertificateVerification = "ALIBABA_CLOUD_IDAAS_UNSAFE_SKIP_CERTIFICATE_VERIFICATION"
 
 	UrlIdaasProduct                = "https://www.aliyun.com/product/idaas"
 	UrlAlibabaCloudIdaasRepository = "https://github.com/aliyunidaas/alibaba-cloud-idaas"

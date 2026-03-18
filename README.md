@@ -491,7 +491,31 @@ PKCS#7 config sample:
 }
 ```
 
-For example `alibaba-cloud-idaas` located in `/user/admin`, config OpenClaw like this:
+ECS RAM Role config sample:
+```json
+{
+  "version": "1",
+  "current_profile": "agent2",
+  "profile": {
+    "agent2": {
+      "instance_id": "idaas_wrws**********************",
+      "developer_api_endpoint": "eiam-developerapi.cn-hangzhou.aliyuncs.com",
+      "access_token_provider": {
+        "open_api": {
+          "instance_id": "idaas_wrws**********************",
+          "application_id": "app_ngfs**********************",
+          "audience": "urn:cloud:idaas:pam",
+          "scope_values": [".all"],
+          "type": "ecs_ram_role",
+          "role_arn": "acs:ram::139*************:role/ecs-ram-role-test-***********"
+        }
+      }
+    }
+  }
+}
+```
+
+For example `alibaba-cloud-idaas` located in `/user/admin` directory, then config OpenClaw like this:
 
 ```json
 {
