@@ -1,71 +1,71 @@
 # alibaba-cloud-idaas
 
-**English** | [中文](README-zh_CN.md)
+[English](README.md) | **中文**
 
 > [!IMPORTANT]
-> This is a preview release.
+> 当前为预览版本。
 
-Connect Alibaba Cloud and other cloud command line with [Alibaba Cloud IDaaS](https://www.aliyun.com/product/idaas).
+使用 [阿里云 IDaaS](https://www.aliyun.com/product/idaas) 连接阿里云及其他云厂商的命令行工具。
 
-## Compile
+## 编译
 
-Build `alibaba-cloud-idaas` just run `go build`:
+编译 `alibaba-cloud-idaas` 直接执行 `go build`：
 ```shell
 go build
 ```
 
-Build with an explicit output binary name:
+指定输出的二进制文件名：
 ```shell
 go build -o alibaba-cloud-idaas .
 ```
 
-Feature PKCS#11 and YubiKey can be turned off via:
+PKCS#11 与 YubiKey 特性可通过构建标签关闭：
 ```shell
 go build -tags disable_pkcs11,disable_yubikey_piv
 ```
 
-Install to `$GOPATH/bin` (so `alibaba-cloud-idaas` is on your `PATH`):
+安装到 `$GOPATH/bin`（这样 `alibaba-cloud-idaas` 就在 `PATH` 中）：
 ```shell
 go install
 ```
 
-Cross compile for other platforms:
+交叉编译到其他平台：
 ```shell
 GOOS=darwin  GOARCH=arm64 go build -o alibaba-cloud-idaas .
 GOOS=linux   GOARCH=amd64 go build -o alibaba-cloud-idaas .
 GOOS=windows GOARCH=amd64 go build -o alibaba-cloud-idaas.exe .
 ```
 
-## External signers
+## 外部签名器
 
-Supported external signers:
+支持的外部签名器：
 
-- Yubikey PIV Signer - requires `pcsc-lite` on Linux
-- PKCS#11 Signer
-- Custom External Signer
+- YubiKey PIV 签名器 —— Linux 上需要 `pcsc-lite`
+- PKCS#11 签名器
+- 自定义外部签名器
 
-## Environments
+## 环境变量
 
-| Environment Key                              | Comments                                |
-|----------------------------------------------|-----------------------------------------|
-| ALIBABA_CLOUD_IDAAS_USER_AGENT               | User Agent when send OIDC HTTP requests |
-| ALIBABA_CLOUD_IDAAS_UNSAFE_DEBUG             | Print unsafe(secure) data to log files  |
-| ALIBABA_CLOUD_IDAAS_UNSAFE_CONSOLE_PRINT     | Copy log to console(std err)            |
-| ALIBABA_CLOUD_IDAAS_PKSC11_PIN               | PKCS#11 PIN                             |
-| ALIBABA_CLOUD_IDAAS_YUBIKEY_PIN              | YubiKey PIN                             |
+| 环境变量                                       | 说明                        |
+|----------------------------------------------|----------------------------|
+| ALIBABA_CLOUD_IDAAS_USER_AGENT               | 发送 OIDC HTTP 请求时的 User-Agent |
+| ALIBABA_CLOUD_IDAAS_UNSAFE_DEBUG             | 将敏感（安全）数据写入日志文件        |
+| ALIBABA_CLOUD_IDAAS_UNSAFE_CONSOLE_PRINT     | 将日志复制到控制台（stderr）        |
+| ALIBABA_CLOUD_IDAAS_PKSC11_PIN               | PKCS#11 PIN                |
+| ALIBABA_CLOUD_IDAAS_YUBIKEY_PIN              | YubiKey PIN                |
 
 
-## Profile Config
+## Profile 配置
 
-## Config file location
+## 配置文件位置
 
-`~/.aliyun/alibaba-cloud-idaas.json` priority use when file exists
-or `~/.cloud_idaas/idaas-cli.json`
-> `~` means `$HOME`
+`~/.aliyun/alibaba-cloud-idaas.json` 存在时优先使用，
+否则使用 `~/.cloud_idaas/idaas-cli.json`
+> `~` 表示 `$HOME`
 
-### 🆕 AKless via Device Code Flow
+### 🆕 通过设备码流程实现 AKless
 
-Fetch STS Token via IDaaS new AKless feature.
+使用 IDaaS 新的 AKless 能力获取 STS Token。
 
 ```json
 {
@@ -92,10 +92,10 @@ Fetch STS Token via IDaaS new AKless feature.
 }
 ```
 
-### Device Code Flow
+### 设备码流程
 
-Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
-> `client_secret` is not required for public client
+遵循规范 RFC 8628: OAuth 2.0 Device Authorization Grant。
+> 公有客户端（public client）不需要 `client_secret`
 ```json
 {
   "version": "1",
@@ -145,8 +145,8 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
 }
 ```
 
-### Public Key Sign with YubiKey
-> read in from env `ALIBABA_CLOUD_IDAAS_YUBIKEY_PIN` when absent
+### 使用 YubiKey 进行公钥签名
+> 未配置时从环境变量 `ALIBABA_CLOUD_IDAAS_YUBIKEY_PIN` 读取
 ```json
 {
   "version": "1",
@@ -178,8 +178,8 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
 }
 ```
 
-### Public Key sign with PKCS#11
-> read pin from env `ALIBABA_CLOUD_IDAAS_PKSC11_PIN` when absent
+### 使用 PKCS#11 进行公钥签名
+> 未配置时从环境变量 `ALIBABA_CLOUD_IDAAS_PKSC11_PIN` 读取 PIN
 ```json
 {
   "version": "1",
@@ -212,7 +212,7 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
 }
 ```
 
-### Fetch AWS STS Token
+### 获取 AWS STS Token
 
 ```json
 {
@@ -237,7 +237,7 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
 }
 ```
 
-### Fetch OIDC Token
+### 获取 OIDC Token
 
 ```json
 {
@@ -257,9 +257,9 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
   }
 }
 ```
-### Fetch Static Credential
+### 获取静态凭据
 
-Obtain a static credential (e.g. API key) managed by IDaaS via the Developer API:
+通过 Developer API 获取由 IDaaS 托管的静态凭据（例如 API Key）：
 
 ```json
 {
@@ -286,63 +286,63 @@ Obtain a static credential (e.g. API key) managed by IDaaS via the Developer API
 alibaba-cloud-idaas fetch-token --profile my-api-key
 ```
 
-> Note: for `device_code`, the token type now defaults to **access_token** (instance authorization server era).
-> Keyless STS providers (`alibaba_cloud_sts` / `aws_sts`) automatically use `id_token` as required by `AssumeRoleWithOIDC`.
+> 注意：对于 `device_code`，token 类型现在默认为 **access_token**（实例授权服务器时代）。
+> 无密钥 STS provider（`alibaba_cloud_sts` / `aws_sts`）会按 `AssumeRoleWithOIDC` 的要求自动使用 `id_token`。
 
 
-## Run Commands
+## 运行命令
 
-Display help message `alibaba-cloud-idaas --help`.
+查看帮助信息 `alibaba-cloud-idaas --help`。
 
-See the [Command Reference](docs/command-reference.md) for full flag documentation.
+完整的参数说明见 [命令参考](docs/command-reference-zh_CN.md)。
 
-Subcommands:
-- `onboard`             - Zero-config onboard: discover instance, device-code login, list assumable cloud roles, generate profiles
-- `login`               - Device-code login to IDaaS instance and cache access token
-- `fetch-token`         - Fetch STS token, output STS Token to `stdout` in JSON format
-- `show-token`          - Show STS token (human-readable)
-- `show-profiles`       - Show profiles from `~/.aliyun/alibaba-cloud-idaas.json` or `~/.cloud_idaas/idaas-cli.json`
-- `show`                - Query subcommands (profiles / roles / cache / token / status / instance / signer-key)
-- `status`              - Show current profile / login status / serve daemon status
-- `serve`               - Start local HTTP credential service (for SDK `credentials_uri`)
-- `execute`             - Export STS token to environment and run command
-- `logout`              - Clear cached tokens (profile config is preserved)
-- `clean-cache`         - Clean local cache, directory `~/.aliyun/alibaba-cloud-idaas/` or `~/.cloud_idaas/cloud-cli/` (follows the config file location)
-- `show-signer-public-key` - Show signer public key
-- `qr`                  - Generate QR code
-- `validate-jwt`        - Validate JWT (RS256 only)
-- `openclaw-secret`     - Get OpenClaw secret
-- `agent`               - Agent subcommands (access-token / get-secret / put-secret / token-exchange / decrypt-secret)
+子命令：
+- `onboard`             - 零配置接入：发现实例、设备码登录、列出可 Assume 的云角色、生成 profile
+- `login`               - 设备码登录 IDaaS 实例并缓存 access token
+- `fetch-token`         - 获取 STS token，以 JSON 格式输出到 `stdout`
+- `show-token`          - 展示 STS token（人类可读）
+- `show-profiles`       - 展示 `~/.aliyun/alibaba-cloud-idaas.json` 或 `~/.cloud_idaas/idaas-cli.json` 中的 profile
+- `show`               - 查询子命令族（profiles / roles / cache / token / status / instance / signer-key）
+- `status`              - 展示当前 profile / 登录态 / serve daemon 状态
+- `serve`               - 启动本地 HTTP 凭证服务（供 SDK `credentials_uri` 使用）
+- `execute`             - 将 STS token 注入环境变量并执行命令
+- `logout`              - 清除缓存的 token（保留 profile 配置）
+- `clean-cache`         - 清除本地缓存，目录 `~/.aliyun/alibaba-cloud-idaas/` 或 `~/.cloud_idaas/cloud-cli/`（随配置文件位置变化）
+- `show-signer-public-key` - 展示签名器公钥
+- `qr`                  - 生成二维码
+- `validate-jwt`        - 验证 JWT（仅 RS256）
+- `openclaw-secret`     - 获取 OpenClaw 密钥
+- `agent`               - Agent 子命令族（access-token / get-secret / put-secret / token-exchange / decrypt-secret）
 
-### Zero-config onboard
+### 零配置接入
 
-One command to onboard: given only the instance domain, `onboard` discovers the instance
-(`/.well-known/cloud-idaas-configuration` → `instance_id` / `default_authorization_server` /
-`developer_api_endpoint`), performs a device-code login (broker client defaults to `iap_developer`,
-override with `--client-id`), lists the cloud roles the current user can assume, and generates
-`cloud_account_token` profiles (plus aliyun-cli `External` profiles) — no AK required.
+一条命令完成接入：只需提供实例域名，`onboard` 会自动发现实例
+（`/.well-known/cloud-idaas-configuration` → `instance_id` / `default_authorization_server` /
+`developer_api_endpoint`），执行设备码登录（broker 客户端默认 `iap_developer`，
+可用 `--client-id` 覆盖），列出当前用户可 Assume 的云角色，并生成
+`cloud_account_token` profile（同时生成 aliyun-cli 的 `External` profile）—— 全程无需 AK。
 
 ```shell
 alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com
-# override broker client / prefer VPC endpoint:
+# 覆盖 broker 客户端 / 优先使用 VPC 端点：
 alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx --vpc
 ```
 
-Login (device code) uses the composite scope `urn:cloud:idaas:pam|cloud_account_role:obtain_access_credential`
-against the instance authorization server. After `onboard`, use any generated profile directly:
+登录（设备码）使用组合 scope `urn:cloud:idaas:pam|cloud_account_role:obtain_access_credential`
+向实例授权服务器发起请求。`onboard` 完成后即可直接使用生成的任意 profile：
 
 ```shell
 aliyun --profile aliyun-<role> sts GetCallerIdentity
 aliyun --profile aliyun-<role> oss ls
 ```
 
-> Prerequisites: the broker client application must be delegated to the PAM resource server
-> (`urn:cloud:idaas:pam`) scope `cloud_account_role:obtain_access_credential` and have the
-> `device_code` grant enabled; target cloud roles must be onboarded and authorized to the user.
+> 前置条件：broker 客户端应用必须被授权访问 PAM 资源服务器
+> （`urn:cloud:idaas:pam`）的 `cloud_account_role:obtain_access_credential` scope，
+> 且已启用 `device_code` 授权类型；目标云角色必须已接入并授权给该用户。
 
-### Fetch STS token
+### 获取 STS token
 
-Run command: `alibaba-cloud-idaas fetch-token --profile aliyun2`, outputs:
+执行命令 `alibaba-cloud-idaas fetch-token --profile aliyun2`，输出：
 ```json
 {
   "mode": "StsToken",
@@ -353,7 +353,7 @@ Run command: `alibaba-cloud-idaas fetch-token --profile aliyun2`, outputs:
 }
 ```
 
-Run command: `alibaba-cloud-idaas fetch-token --profile aws1`, outputs:
+执行命令 `alibaba-cloud-idaas fetch-token --profile aws1`，输出：
 ```json
 {
   "Version": 1,
@@ -364,7 +364,7 @@ Run command: `alibaba-cloud-idaas fetch-token --profile aws1`, outputs:
 }
 ```
 
-Run command: `alibaba-cloud-idaas fetch-token --profile oidc1`, outputs:
+执行命令 `alibaba-cloud-idaas fetch-token --profile oidc1`，输出：
 ```json
 {
   "id_token": "eyJraWQiOi*******************",
@@ -374,9 +374,9 @@ Run command: `alibaba-cloud-idaas fetch-token --profile oidc1`, outputs:
   "expires_at": 1756795270
 }
 ```
-Add parameter `--oidc-field id_token` or `--oidc-field access_token`, only fetch ID Token or Access Token.
+加上参数 `--oidc-field id_token` 或 `--oidc-field access_token`，可只获取 ID Token 或 Access Token。
 
-Config Alibaba Cloud cli, file: `~/.aliyun/config.json`
+配置阿里云 cli，文件：`~/.aliyun/config.json`
 ```json
 {
   "name": "test-idaas",
@@ -388,7 +388,7 @@ Config Alibaba Cloud cli, file: `~/.aliyun/config.json`
 }
 ```
 
-Config AWS cli, file: `~/.aws/config`
+配置 AWS cli，文件：`~/.aws/config`
 
 ```ini
 [default]
@@ -396,9 +396,9 @@ region = us-east-2
 credential_process = alibaba-cloud-idaas fetch-token --profile aws2
 ```
 
-### Print STS Token in console
+### 在控制台打印 STS Token
 
-Run command: `alibaba-cloud-idaas show-token --profile aliyun2`, outputs:
+执行命令 `alibaba-cloud-idaas show-token --profile aliyun2`，输出：
 ```shell
 Access Key ID     : STS.NVkY*********************
 Access Key Secret : CZPLzX**************************************
@@ -406,7 +406,7 @@ Security Token    : CAIS0AJ1q6Ft5B2yfSjIr5XeEs3mm551gqHaMU7cjms0YeFeioDC********
 Expiration        : 2025-05-22 09:57:11 +0800 CST   [Expires in 34 minute(s)]
 ```
 
-Run command: `alibaba-cloud-idaas show-token --profile aws1`, outputs:
+执行命令 `alibaba-cloud-idaas show-token --profile aws1`，输出：
 ```shell
 Access Key ID     : ASIAX***************
 Secret Access Key : 05U0bVZ*********************************
@@ -414,9 +414,9 @@ Session Token     : IQoJb3JpZ2luX2VjEL7//////////wEaCXVzLWVhc3Qt****************
 Expiration        : 2025-09-02 15:20:46 +0800 CST   [Expires in 49 minute(s)]
 ```
 
-### Via aliyun-cli
+### 通过 aliyun-cli 使用
 
-#### Method 1 - config.json
+#### 方式 1 —— config.json
 `~/.aliyun/config.json`
 
 ```json
@@ -449,7 +449,7 @@ Bucket Number is: 3
 0.236787(s) elapsed
 ```
 
-#### Method 1.1 - direct execute
+#### 方式 1.1 —— 直接执行
 
 ```shell
 alibaba-cloud-idaas execute --profile aliyun2 --env-region cn-hangzhou -- aliyun sts GetCallerIdentity
@@ -466,7 +466,7 @@ alibaba-cloud-idaas execute --profile aliyun2 --env-region cn-hangzhou -- aliyun
 }
 ```
 
-#### Method 1.2 - execute bash and run
+#### 方式 1.2 —— 启动 bash 后执行
 
 ```shell
 alibaba-cloud-idaas execute --profile aliyun2 --env-region cn-hangzhou bash
@@ -544,14 +544,14 @@ Plan: 2 to add, 0 to change, 0 to destroy.
 Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you run "terraform apply" now.
 ```
 
-You can start shell with `alibaba-cloud-idaas execute --profile aliyun2 bash`, then `terraform plan`.
+也可以用 `alibaba-cloud-idaas execute --profile aliyun2 bash` 启动 shell，然后执行 `terraform plan`。
 
 
 ### OpenClaw
 
-> Specification: https://docs.openclaw.ai/gateway/secrets
+> 规范：https://docs.openclaw.ai/gateway/secrets
 
-PKCS#7 config sample:
+PKCS#7 配置示例：
 ```json
 {
   "version": "1",
@@ -580,7 +580,7 @@ PKCS#7 config sample:
 }
 ```
 
-ECS RAM Role config sample:
+ECS RAM Role 配置示例：
 ```json
 {
   "version": "1",
@@ -604,7 +604,7 @@ ECS RAM Role config sample:
 }
 ```
 
-For example `alibaba-cloud-idaas` located in `/user/admin` directory, then config OpenClaw like this:
+例如 `alibaba-cloud-idaas` 位于 `/user/admin` 目录，则按如下方式配置 OpenClaw：
 
 ```json
 {
@@ -630,7 +630,7 @@ For example `alibaba-cloud-idaas` located in `/user/admin` directory, then confi
 ```
 
 
-Test `openclaw-secret` subcommand:
+测试 `openclaw-secret` 子命令：
 ```shell
 $ echo '{ "protocolVersion": 1, "provider": "idaas", "ids": ["default_model"] }' | alibaba-cloud-idaas openclaw-secret -p agent1
 {

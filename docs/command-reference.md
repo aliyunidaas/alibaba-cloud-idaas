@@ -1,91 +1,92 @@
-# alibaba-cloud-idaas 命令参考
+# alibaba-cloud-idaas Command Reference
 
-> 版本：v0.2.0-beta
-> 更新：2026-08-11
+**English** | [中文](command-reference-CN.md)
 
-## 命令总览
+> Version: v0.2.0-beta
 
-| 命令 | 用途 | 状态 |
+## Command Overview
+
+| Command | Purpose | Status |
 |------|------|------|
-| `onboard` | 发现实例 + 登录 + 列角色 + 生成 CLI 工具配置 | ✅ |
-| `login` | 设备码登录 IDaaS 并缓存 access token | ✅ |
-| `fetch-token` | 取凭证输出 JSON（credential_process 契约） | ✅ |
-| `serve` | 启动本地 HTTP 凭证服务（供 SDK credentials_uri） | ✅ |
-| `show` | 查询子命令族（profiles/roles/cache/token/status/instance/signer-key） | ✅ |
-| `show-token` | 人类可读展示当前凭证 | ✅ |
-| `show-profiles` | 列出已配置的 profile | ✅ |
-| `show-cache` | 展示缓存条目 | ✅ |
-| `clean-cache` | 清除全部缓存 | ✅ |
-| `logout` | 清除缓存 token（保留 profile 配置） | ✅ |
-| `status` | 展示当前 profile / 登录态 / serve daemon 状态 | ✅ |
-| `execute` | 注入环境变量并执行命令 | ✅ |
-| `show-signer-public-key` | 展示签名器公钥 | ✅ |
-| `qr` | 生成二维码 | ✅ |
-| `validate-jwt` | 验证 JWT（仅 RS256） | ✅ |
-| `openclaw-secret` | 获取 OpenClaw 密钥 | ✅ |
-| `agent` | Agent 子命令族（见下） | ✅ |
+| `onboard` | Discover instance + login + list roles + generate CLI tool config | ✅ |
+| `login` | Device-code login to IDaaS and cache the access token | ✅ |
+| `fetch-token` | Fetch credentials and output JSON (credential_process contract) | ✅ |
+| `serve` | Start a local HTTP credential service (for SDK credentials_uri) | ✅ |
+| `show` | Query subcommand family (profiles/roles/cache/token/status/instance/signer-key) | ✅ |
+| `show-token` | Display current credentials in human-readable form | ✅ |
+| `show-profiles` | List configured profiles | ✅ |
+| `show-cache` | Display cache entries | ✅ |
+| `clean-cache` | Remove all caches | ✅ |
+| `logout` | Remove cached tokens (profile config is preserved) | ✅ |
+| `status` | Display current profile / login state / serve daemon state | ✅ |
+| `execute` | Inject environment variables and run a command | ✅ |
+| `show-signer-public-key` | Display the signer public key | ✅ |
+| `qr` | Generate a QR code | ✅ |
+| `validate-jwt` | Validate a JWT (RS256 only) | ✅ |
+| `openclaw-secret` | Get an OpenClaw secret | ✅ |
+| `agent` | Agent subcommand family (see below) | ✅ |
 
 ---
 
-## 顶层命令
+## Top-level Commands
 
 ### `onboard`
 
-零配置接入：发现实例 → 登录（自动触发 login）→ 列可用角色 → 为 CLI 工具生成配置。
+Zero-config onboarding: discover instance → login (triggers `login` automatically) → list assumable roles → generate config for CLI tools.
 
 ```shell
-# 首次（需指定实例 + client-id）
+# First time (instance + client-id required)
 alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx
 alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx --target aliyun-cli,aws-cli
 
-# 非首次（已有 profile，--instance / --client-id 自动从已有 profile 推断）
+# Subsequent runs (with an existing profile, --instance / --client-id are inferred automatically)
 alibaba-cloud-idaas onboard
 alibaba-cloud-idaas onboard --target aws-cli
 
-# 不写 CLI 配置（只生成 broker profile）
+# Do not write CLI config (generate the broker profile only)
 alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx --target none
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
-| `--instance` | `-i` | IDaaS 实例域名（未传时从已有 profile 推断） | — | 首次必填 |
-| `--target` | — | 目标 CLI 工具（逗号分隔：`aliyun-cli`/`aws-cli`/`tencentcloud-cli`/`mcp`/`none`） | 全部适用 | 否 |
-| `--prefix` | — | 生成 profile 名前缀 | `aliyun` | 否 |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
-| `--vpc` | — | 优先 VPC 端点 | `false` | 否 |
-| `--client-id` | — | broker 客户端应用 ID（透传给 login） | 显式 > 已有 profile > discovery `cli_client_id` > `iap_developer` | 首次必填 |
-| `--force-new` | `-N` | 强制设备码登录（透传给 login） | `false` | 否 |
+| `--instance` | `-i` | IDaaS instance domain (inferred from an existing profile when omitted) | — | First run |
+| `--target` | — | Target CLI tools (comma-separated: `aliyun-cli`/`aws-cli`/`tencentcloud-cli`/`mcp`/`none`) | all applicable | No |
+| `--prefix` | — | Prefix for generated profile names | `aliyun` | No |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
+| `--vpc` | — | Prefer the VPC endpoint | `false` | No |
+| `--client-id` | — | Broker client application ID (passed through to `login`) | explicit > existing profile > discovery `cli_client_id` > `iap_developer` | First run |
+| `--force-new` | `-N` | Force device-code login (passed through to `login`) | `false` | No |
 
 ### `login`
 
-设备码登录 IDaaS，获取 access token 并缓存。不写 profile、不写 CLI 配置。
+Device-code login to IDaaS: obtain an access token and cache it. Writes neither profiles nor CLI config.
 
 ```shell
-# 首次登录（需指定实例 + client-id）
+# First login (instance + client-id required)
 alibaba-cloud-idaas login --instance acme.aliyunidaas.com --client-id app_xxx
 
-# 刷新登录（从 profile 自动读 issuer + scope + client-id，不需再传 --instance / --client-id）
+# Refresh login (issuer + scope + client-id are read from the profile, so --instance / --client-id are not needed)
 alibaba-cloud-idaas login --profile aliyun-readonly
 
-# refresh token 也过期（需重新提供实例 + client-id）
+# Refresh token has also expired (instance + client-id must be supplied again)
 alibaba-cloud-idaas login --instance acme.aliyunidaas.com --client-id app_xxx --force-new
 
-# 自定义 scope
+# Custom scope
 alibaba-cloud-idaas login --instance acme.aliyunidaas.com --client-id app_xxx --scope "urn:cloud:idaas:pam|cloud_account_role:obtain_access_credential urn:cloud:idaas:pam|credential:obtain"
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
-| `--instance` | `-i` | 实例域名（首次登录模式，未传时从已有 profile 推断） | — | 与 `--profile` 二选一 |
-| `--profile` | `-p` | 已有 profile 名（刷新模式，从 profile 自动读 issuer+scope+client-id） | — | 与 `--instance` 二选一 |
-| `--scope` | `-s` | 空格分隔的 `audience\|scope` 组合串 | `urn:cloud:idaas:pam\|.all` | 否 |
-| `--client-id` | — | broker 客户端应用 ID（`--profile` 模式从 profile 自动读） | `--instance` 模式需显式提供 | `--instance` 模式必填 |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
-| `--force-new` | `-N` | 忽略缓存强制重新登录 | `false` | 否 |
+| `--instance` | `-i` | Instance domain (first-login mode; inferred from an existing profile when omitted) | — | One of `--instance` / `--profile` |
+| `--profile` | `-p` | Existing profile name (refresh mode; issuer + scope + client-id are read from the profile) | — | One of `--instance` / `--profile` |
+| `--scope` | `-s` | Space-separated `audience\|scope` combinations | `urn:cloud:idaas:pam\|.all` | No |
+| `--client-id` | — | Broker client application ID (read from the profile in `--profile` mode) | must be explicit in `--instance` mode | In `--instance` mode |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
+| `--force-new` | `-N` | Ignore the cache and log in again | `false` | No |
 
 ### `fetch-token`
 
-取凭证并输出 JSON（aliyun-cli External / aws-cli credential_process 契约）。
+Fetch credentials and output JSON (aliyun-cli External / aws-cli credential_process contract).
 
 ```shell
 alibaba-cloud-idaas fetch-token --profile aliyun-readonly
@@ -93,83 +94,83 @@ alibaba-cloud-idaas fetch-token --profile aws-role --format raw
 alibaba-cloud-idaas fetch-token --profile oidc1 --oidc-field access_token
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | IDaaS Profile | `IDAAS_PROFILE` 或 `current_profile` |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--format` | `-f` | STS 输出格式：`aliyuncli`/`ossutilv2`/`raw` | `aliyuncli` |
-| `--oidc-field` | — | OIDC token 字段：`id_token`/`access_token` | — |
-| `--oidc-format` | — | OIDC 格式：`type1`/`type2` | `type1` |
-| `--output` | `-o` | 输出到文件 | stdout |
-| `--force-new` | `-N` | 强制刷新，忽略所有缓存 | `false` |
-| `--force-new-cloud-token` | — | 强制刷新云凭证（低层缓存） | `false` |
+| `--profile` | `-p` | IDaaS profile | `IDAAS_PROFILE` or `current_profile` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--format` | `-f` | STS output format: `aliyuncli`/`ossutilv2`/`raw` | `aliyuncli` |
+| `--oidc-field` | — | OIDC token field: `id_token`/`access_token` | — |
+| `--oidc-format` | — | OIDC format: `type1`/`type2` | `type1` |
+| `--output` | `-o` | Write to a file | stdout |
+| `--force-new` | `-N` | Force refresh, ignoring all caches | `false` |
+| `--force-new-cloud-token` | — | Force refresh of the cloud credential (lower-level cache) | `false` |
 
 ### `serve`
 
-启动本地 HTTP 凭证服务，供阿里云 SDK `credentials_uri` 使用。
+Start a local HTTP credential service for the Alibaba Cloud SDK `credentials_uri`.
 
 ```shell
 alibaba-cloud-idaas serve --ssrf-token my-secret-token
 alibaba-cloud-idaas serve --port 8080 --ssrf-token my-secret-token
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--port` | `-p` | 监听端口 | `1127` |
-| `--ssrf-token` | — | SSRF token（header `X-Aliyun-Parameters-Secrets-Token` 或 query `__ssrf_token`） | — |
-| `--unsafe-listen-host` | — | 监听地址（默认 `127.0.0.1`，可设 `0.0.0.0`） | `127.0.0.1` |
-| `--unsafe-disable-ssrf` | — | 禁用 SSRF 校验 | `false` |
+| `--port` | `-p` | Listening port | `1127` |
+| `--ssrf-token` | — | SSRF token (header `X-Aliyun-Parameters-Secrets-Token` or query `__ssrf_token`) | — |
+| `--unsafe-listen-host` | — | Listening address (defaults to `127.0.0.1`, can be set to `0.0.0.0`) | `127.0.0.1` |
+| `--unsafe-disable-ssrf` | — | Disable SSRF validation | `false` |
 
-**端点**：
-- `GET /cloud_token?profile=X&__ssrf_token=T` → STS JSON（`credentials_uri` 契约）
-- `GET /version` → 版本信息
+**Endpoints**:
+- `GET /cloud_token?profile=X&__ssrf_token=T` → STS JSON (`credentials_uri` contract)
+- `GET /version` → version information
 
 ### `show`
 
-查询子命令族，不修改配置。
+Query subcommand family. Never modifies configuration.
 
 #### `show profiles`
 
-列出已配置的 profile。
+List configured profiles.
 
 ```shell
 alibaba-cloud-idaas show profiles
 alibaba-cloud-idaas show profiles -f aliyun
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--profile-filter` | `-f` | profile 名过滤 | — |
-| `--no-color` | — | 无色彩输出 | `false` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--profile-filter` | `-f` | Filter by profile name | — |
+| `--no-color` | — | Colorless output | `false` |
 
 #### `show roles`
 
-列出当前用户可 Assume 的云角色（不生成 profile）。
+List the cloud roles the current user can assume (does not generate profiles).
 
 ```shell
-# 首次（需指定实例 + client-id）
+# First time (instance + client-id required)
 alibaba-cloud-idaas show roles --instance acme.aliyunidaas.com --client-id app_xxx
 
-# 非首次（已有 profile，自动推断）
+# Subsequent runs (inferred automatically from an existing profile)
 alibaba-cloud-idaas show roles
 
-# JSON 输出
+# JSON output
 alibaba-cloud-idaas show roles --json
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
-| `--instance` | `-i` | IDaaS 实例域名（未传时从已有 profile 推断） | — | 首次必填 |
-| `--scope` | `-s` | scope | `urn:cloud:idaas:pam\|.all` | 否 |
-| `--client-id` | — | broker 客户端应用 ID（未传时从已有 profile 推断） | — | 首次必填 |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
-| `--vpc` | — | 优先 VPC 端点 | `false` | 否 |
-| `--json` | — | 机器可读 JSON 输出 | `false` | 否 |
+| `--instance` | `-i` | IDaaS instance domain (inferred from an existing profile when omitted) | — | First run |
+| `--scope` | `-s` | Scope | `urn:cloud:idaas:pam\|.all` | No |
+| `--client-id` | — | Broker client application ID (inferred from an existing profile when omitted) | — | First run |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
+| `--vpc` | — | Prefer the VPC endpoint | `false` | No |
+| `--json` | — | Machine-readable JSON output | `false` | No |
 
 #### `show status`
 
-展示当前 profile / provider / instance / serve daemon 状态。
+Display current profile / provider / instance / serve daemon state.
 
 ```shell
 alibaba-cloud-idaas show status
@@ -177,103 +178,105 @@ alibaba-cloud-idaas show status --profile aliyun-readonly
 alibaba-cloud-idaas show status --json
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | 指定 profile | `IDAAS_PROFILE` 或 `current_profile` |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--json` | — | 机器可读 JSON 输出 | `false` |
+| `--profile` | `-p` | Target profile | `IDAAS_PROFILE` or `current_profile` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--json` | — | Machine-readable JSON output | `false` |
 
 #### `show instance`
 
-展示实例发现信息。
+Display instance discovery information.
 
 ```shell
 alibaba-cloud-idaas show instance --instance acme.aliyunidaas.com
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
-| `--instance` | `-d` | IDaaS 实例域名 | — | ✅ |
-| `--vpc` | — | 优先 VPC 端点 | `false` | 否 |
+| `--instance` | `-d` | IDaaS instance domain | — | ✅ |
+| `--vpc` | — | Prefer the VPC endpoint | `false` | No |
 
 #### `show cache` / `show token` / `show signer-key`
 
-占位子命令（当前调用旧的顶层命令 `show-cache` / `show-token` / `show-signer-public-key`）。
+Placeholder subcommands (currently delegate to the legacy top-level commands `show-cache` / `show-token` / `show-signer-public-key`).
 
 ### `show-token`
 
-人类可读展示当前凭证（彩色输出）。
+Display current credentials in human-readable form (colored output).
 
 ```shell
 alibaba-cloud-idaas show-token --profile aliyun-readonly
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | IDaaS Profile | `IDAAS_PROFILE` 或 `current_profile` |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--oidc-field` | — | OIDC token 字段 | — |
-| `--no-color` | — | 无色彩输出 | `false` |
-| `--force-new` | `-N` | 强制刷新 | `false` |
-| `--force-new-cloud-token` | — | 强制刷新云凭证 | `false` |
+| `--profile` | `-p` | IDaaS profile | `IDAAS_PROFILE` or `current_profile` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--oidc-field` | — | OIDC token field | — |
+| `--no-color` | — | Colorless output | `false` |
+| `--force-new` | `-N` | Force refresh | `false` |
+| `--force-new-cloud-token` | — | Force refresh of the cloud credential | `false` |
 
 ### `show-profiles`
 
-列出已配置的 profile。
+List configured profiles.
 
 ```shell
 alibaba-cloud-idaas show-profiles
 alibaba-cloud-idaas show-profiles --profile-filter aliyun
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--profile-filter` | `-p` | profile 名过滤 | — |
-| `--no-color` | — | 无色彩输出 | `false` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--profile-filter` | `-p` | Filter by profile name | — |
+| `--no-color` | — | Colorless output | `false` |
 
 ### `show-cache`
 
-展示缓存条目。
+Display cache entries.
 
 ```shell
 alibaba-cloud-idaas show-cache
 alibaba-cloud-idaas show-cache --category oidc_token --name app_xxx
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--category` | `-c` | 缓存类别（`oidc_token`/`cloud_token`/`token_response`） | 全部 |
-| `--name` | `-n` | 缓存名过滤 | — |
+| `--category` | `-c` | Cache category (`oidc_token`/`cloud_token`/`token_response`) | all |
+| `--name` | `-n` | Filter by cache name | — |
+
+> Note: here `-c` is the short form of `--category`, **not** `--config` as in other commands. `--name` only takes effect together with `--category`.
 
 ### `clean-cache`
 
-清除全部缓存。
+Remove all caches.
 
 ```shell
 alibaba-cloud-idaas clean-cache
 ```
 
-无参数。
+No flags.
 
 ### `logout`
 
-清除缓存 token，保留 profile 配置。
+Remove cached tokens while preserving profile configuration.
 
 ```shell
-alibaba-cloud-idaas logout                          # 清除所有缓存
-alibaba-cloud-idaas logout --profile aliyun-readonly # 清除指定 profile
-alibaba-cloud-idaas logout --profile aliyun-readonly --dry-run  # 预览
+alibaba-cloud-idaas logout                          # remove all caches
+alibaba-cloud-idaas logout --profile aliyun-readonly # remove one profile
+alibaba-cloud-idaas logout --profile aliyun-readonly --dry-run  # preview
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | 要清除的 profile（不传则清全部） | — |
-| `--dry-run` | — | 只展示不实际删除 | `false` |
+| `--profile` | `-p` | Profile to clear (clears everything when omitted) | — |
+| `--dry-run` | — | Show what would be removed without deleting | `false` |
 
 ### `status`
 
-展示当前 profile、登录态、serve daemon 状态。
+Display current profile, login state and serve daemon state.
 
 ```shell
 alibaba-cloud-idaas status
@@ -281,211 +284,219 @@ alibaba-cloud-idaas status --profile aliyun-readonly
 alibaba-cloud-idaas status --json
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | 指定 profile | `IDAAS_PROFILE` 或 `current_profile` |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--json` | — | 机器可读 JSON 输出 | `false` |
+| `--profile` | `-p` | Target profile | `IDAAS_PROFILE` or `current_profile` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--json` | — | Machine-readable JSON output | `false` |
 
 ### `execute`
 
-注入环境变量并执行命令。
+Inject environment variables and run a command.
 
 ```shell
 alibaba-cloud-idaas execute --profile aliyun-readonly --env-region cn-hangzhou aliyun oss ls
 alibaba-cloud-idaas execute --profile aliyun-readonly bash
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | IDaaS Profile | `IDAAS_PROFILE` 或 `current_profile` |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--env-region` | `-R` | 设置环境变量 region | — |
-| `--force-new` | `-N` | 强制刷新 | `false` |
-| `--force-new-cloud-token` | — | 强制刷新云凭证 | `false` |
-| `--show-token` | — | 执行前展示凭证 | `false` |
+| `--profile` | `-p` | IDaaS profile | `IDAAS_PROFILE` or `current_profile` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--env-region` | `-R` | Set the region environment variables | — |
+| `--force-new` | `-N` | Force refresh | `false` |
+| `--force-new-cloud-token` | — | Force refresh of the cloud credential | `false` |
+| `--show-token` | — | Display credentials before running | `false` |
 
 ### `show-signer-public-key`
 
-展示签名器公钥。
+Display the signer public key.
 
 ```shell
 alibaba-cloud-idaas show-signer-public-key --profile aliyun3
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | IDaaS Profile | — |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--profile` | `-p` | IDaaS profile | — |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
 
 ### `qr`
 
-生成二维码。
+Generate a QR code.
 
 ```shell
 alibaba-cloud-idaas qr --content "https://example.com"
 alibaba-cloud-idaas qr --content "https://example.com" --small
 ```
 
-| 参数 | 说明 | 默认值 |
+| Flag | Description | Default |
 |------|------|--------|
-| `--content` | 二维码内容 | — |
-| `--small` | 小尺寸二维码 | `false` |
+| `--content` | QR code content | — |
+| `--small` | Small-size QR code | `false` |
 
 ### `validate-jwt`
 
-验证 JWT（仅 RS256）。
+Validate a JWT (RS256 only).
 
 ```shell
 alibaba-cloud-idaas validate-jwt --token "eyJhbGciOi..."
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
 | `--token` | `-t` | JWT token | — | ✅ |
 
 ### `openclaw-secret`
 
-获取 OpenClaw 密钥。
+Get an OpenClaw secret.
 
 ```shell
 alibaba-cloud-idaas openclaw-secret --profile agent1
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--profile` | `-p` | IDaaS Profile | — |
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--force-new` | `-N` | 强制刷新 | `false` |
+| `--profile` | `-p` | IDaaS profile | — |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--force-new` | `-N` | Force refresh | `false` |
 
 ---
 
-## agent 子命令
+## agent Subcommands
 
 ### `agent access-token`
 
-获取 agent access token。
+Get an agent access token.
 
 ```shell
 alibaba-cloud-idaas agent access-token --profile agent1
 alibaba-cloud-idaas agent access-token --profile agent1 --scope "urn:cloud:idaas:pam|.all"
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--profile` | `-p` | IDaaS Profile | — |
-| `--scope` | `-s` | scope，格式 `audience\|scope-value` | 从 config 读取 |
-| `--force-new` | `-N` | 强制刷新 | `false` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--profile` | `-p` | IDaaS profile | — |
+| `--scope` | `-s` | Scope, in the form `audience\|scope-value` | read from config |
+| `--force-new` | `-N` | Force refresh | `false` |
 
 ### `agent get-secret`
 
-获取密钥。
+Get a secret.
 
 ```shell
 alibaba-cloud-idaas agent get-secret --profile agent1 --name default_model
 alibaba-cloud-idaas agent get-secret --profile agent1 --name default_model --json-query .default_model.value.apiKeyContent.apiKey
 ```
 
-| 参数 | 别名 | 说明 | 默认值 |
+| Flag | Alias | Description | Default |
 |------|------|------|--------|
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` |
-| `--profile` | `-p` | IDaaS Profile | — |
-| `--scope` | `-s` | scope | `urn:cloud:idaas:pam\|credential:obtain` |
-| `--json-query` | `-q` | JSON 查询表达式 | — |
-| `--name` | `-n` | 密钥名（可多次指定） | — |
-| `--raw` | — | 输出原始响应 | `false` |
-| `--string-raw` | — | 输出原始 JSON 字符串 | `false` |
-| `--force-new` | `-N` | 强制刷新 | `false` |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` |
+| `--profile` | `-p` | IDaaS profile | — |
+| `--scope` | `-s` | Scope | `urn:cloud:idaas:pam\|credential:obtain` |
+| `--json-query` | `-q` | JSON query expression | — |
+| `--name` | `-n` | Secret name (may be repeated) | — |
+| `--raw` | — | Output the raw response | `false` |
+| `--string-raw` | — | Output the raw JSON string | `false` |
+| `--force-new` | `-N` | Force refresh | `false` |
 
 ### `agent put-secret`
 
-存储密钥。
+Store a secret.
 
 ```shell
 alibaba-cloud-idaas agent put-secret --profile agent1 --name my-key --value "sk-xxx"
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
-| `--profile` | `-p` | IDaaS Profile | — | 否 |
-| `--scope` | `-s` | scope | `urn:cloud:idaas:pam\|credential:manage` | 否 |
-| `--name` | `-n` | 密钥名 | — | ✅ |
-| `--display-name` | — | 显示名 | 同 `--name` | 否 |
-| `--value` | — | 密钥值 | — | ✅ |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
+| `--profile` | `-p` | IDaaS profile | — | No |
+| `--scope` | `-s` | Scope | `urn:cloud:idaas:pam\|credential:manage` | No |
+| `--name` | `-n` | Secret name | — | ✅ |
+| `--display-name` | — | Display name | same as `--name` | No |
+| `--value` | — | Secret value | — | ✅ |
 
 ### `agent decrypt-secret`
 
-解密密钥。
+Decrypt a secret.
 
 ```shell
 alibaba-cloud-idaas agent decrypt-secret --profile agent1 --name default_model --ciphertext "encrypted..."
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
-| `--profile` | `-p` | IDaaS Profile | — | 否 |
-| `--scope` | `-s` | scope | `urn:cloud:idaas:pam\|credential:decrypt` | 否 |
-| `--name` | `-n` | 凭据标识 | — | ✅ |
-| `--ciphertext` | — | 密文 | — | ✅ |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
+| `--profile` | `-p` | IDaaS profile | — | No |
+| `--scope` | `-s` | Scope | `urn:cloud:idaas:pam\|credential:decrypt` | No |
+| `--name` | `-n` | Credential identifier | — | ✅ |
+| `--ciphertext` | — | Ciphertext | — | ✅ |
 
 ### `agent token-exchange`
 
-Token Exchange (RFC 8693)。
+Token Exchange (RFC 8693).
 
 ```shell
 alibaba-cloud-idaas agent token-exchange --profile agent1 --subject-token "eyJ..." 
 ```
 
-| 参数 | 别名 | 说明 | 默认值 | 必填 |
+| Flag | Alias | Description | Default | Required |
 |------|------|------|--------|------|
-| `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
-| `--profile` | `-p` | IDaaS Profile | — | 否 |
-| `--scope` | `-s` | scope | — | 否 |
-| `--subject-token-type` | `-T` | subject token 类型 | `urn:ietf:params:oauth:token-type:access_token` | 否 |
-| `--subject-token` | `-S` | subject token | — | ✅ |
+| `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
+| `--profile` | `-p` | IDaaS profile | — | No |
+| `--scope` | `-s` | Scope | — | No |
+| `--subject-token-type` | `-T` | Subject token type | `urn:ietf:params:oauth:token-type:access_token` | No |
+| `--subject-token` | `-S` | Subject token | — | ✅ |
 
 ---
 
-## 环境变量
+## Environment Variables
 
-| 变量 | 说明 |
+| Variable | Description |
 |------|------|
-| `IDAAS_PROFILE` | 默认 profile（优先级：`--profile` > `IDAAS_PROFILE` > `current_profile`） |
-| `ALIBABA_CLOUD_IDAAS_USER_AGENT` | OIDC 请求 User-Agent |
-| `ALIBABA_CLOUD_IDAAS_UNSAFE_DEBUG` | 日志输出敏感数据 |
-| `ALIBABA_CLOUD_IDAAS_UNSAFE_CONSOLE_PRINT` | 日志复制到 stderr |
+| `IDAAS_PROFILE` | Default profile (precedence: `--profile` > `IDAAS_PROFILE` > `current_profile`) |
+| `ALIBABA_CLOUD_IDAAS_USER_AGENT` | User-Agent for OIDC requests |
+| `ALIBABA_CLOUD_IDAAS_UNSAFE_DEBUG` | Write sensitive data to the log |
+| `ALIBABA_CLOUD_IDAAS_UNSAFE_CONSOLE_PRINT` | Copy the log to stderr |
 | `ALIBABA_CLOUD_IDAAS_PKSC11_PIN` | PKCS#11 PIN |
 | `ALIBABA_CLOUD_IDAAS_YUBIKEY_PIN` | YubiKey PIV PIN |
 
 ---
 
-## 配置文件
+## Configuration Files
 
-| 文件 | 作用 |
+| File | Purpose |
 |------|------|
-| `~/.aliyun/alibaba-cloud-idaas.json` | broker profile 配置（provider 类型 + 参数） |
-| `~/.aliyun/config.json` | aliyun-cli External profile（由 `onboard` 生成） |
-| `~/.aws/config` | aws-cli credential_process profile（由 `onboard` 生成） |
-| `~/.aliyun/alibaba-cloud-idaas/` | 加密缓存目录（oidc_token / cloud_token / token_response） |
+| `~/.aliyun/alibaba-cloud-idaas.json` | Broker profile config (provider type + parameters) |
+| `~/.aliyun/config.json` | aliyun-cli External profile (generated by `onboard`) |
+| `~/.aws/config` | aws-cli credential_process profile (generated by `onboard`) |
+
+The config file is selected as follows: `~/.aliyun/alibaba-cloud-idaas.json` takes priority when it exists, otherwise `~/.cloud_idaas/idaas-cli.json` is used.
+
+The cache directory follows the config file location (encrypted storage for oidc_token / cloud_token / token_response):
+
+| Config file in use | Cache directory |
+|------|------|
+| `~/.aliyun/alibaba-cloud-idaas.json` | `~/.aliyun/alibaba-cloud-idaas/` |
+| `~/.cloud_idaas/idaas-cli.json` | `~/.cloud_idaas/cloud-cli/` |
 
 ---
 
-## 编译
+## Build
 
 ```shell
 go build -o alibaba-cloud-idaas .
 
-# 禁用硬件签名器
+# Disable hardware signers
 go build -tags disable_pkcs11,disable_yubikey_piv
 
-# 交叉编译
+# Cross compile
 GOOS=darwin  GOARCH=arm64 go build -o alibaba-cloud-idaas .
 GOOS=linux   GOARCH=amd64 go build -o alibaba-cloud-idaas .
 GOOS=windows GOARCH=amd64 go build -o alibaba-cloud-idaas.exe .
 
-# 安装到 PATH
+# Install to PATH
 go install
 ```
