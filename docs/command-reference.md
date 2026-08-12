@@ -1,6 +1,6 @@
 # alibaba-cloud-idaas Command Reference
 
-**English** | [中文](command-reference-CN.md)
+**English** | [中文](command-reference_zh.md)
 
 > Version: v0.2.0-beta
 
