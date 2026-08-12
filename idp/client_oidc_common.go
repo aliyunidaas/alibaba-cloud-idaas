@@ -16,8 +16,9 @@ import (
 )
 
 type FetchOidcTokenOptions struct {
-	ForceNew bool
-	CacheKey string
+	OidcCommonOptions *oidc.OidcCommonOptions
+	ForceNew          bool
+	CacheKey          string
 }
 
 func FetchOidcToken(profile string, oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *FetchOidcTokenOptions) (string, error) {
@@ -65,22 +66,21 @@ func FetchTokenResponse(oidcTokenProviderConfig *config.OidcTokenProviderConfig,
 	}
 
 	if len(configSet) > 1 {
-		return nil, errors.New(fmt.Sprintf("%s canot multiple configed", strings.Join(configSet, ", ")))
+		return nil, errors.New(fmt.Sprintf("%s cannot be multiple configured", strings.Join(configSet, ", ")))
 	}
 
 	if hasOidcTokenProviderDeviceCode {
 		tokenResponse, fetchOidcTokenErr := FetchIdTokenDeviceCode(oidcTokenProviderConfig.OidcTokenProviderDeviceCode, options)
 		return tokenResponse, fetchOidcTokenErr
 	} else if hasOidcTokenProviderClientCredentials {
-		tokenResponse, fetchOidcTokenErr := FetchAccessTokenClientCredentials(oidcTokenProviderConfig.OidcTokenProviderClientCredentials)
+		tokenResponse, fetchOidcTokenErr := FetchAccessTokenClientCredentials(oidcTokenProviderConfig.OidcTokenProviderClientCredentials, options.OidcCommonOptions)
 		return tokenResponse, fetchOidcTokenErr
 	} else if hasOpenApi {
 		tokenResponse, fetchOidcTokenErr := FetchAccessTokenOpenApi(oidcTokenProviderConfig.OpenApi)
 		return tokenResponse, fetchOidcTokenErr
-	} else {
-		return nil, errors.New(
-			"OidcTokenProviderDeviceCode or OidcTokenProviderClientCredentials must set at least one")
 	}
+	return nil, errors.New(
+		"OidcTokenProviderDeviceCode or OidcTokenProviderClientCredentials must set at least one")
 }
 
 func fetchJwt(oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *FetchOidcTokenOptions) (int, string, error) {
@@ -100,23 +100,25 @@ func fetchJwt(oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *
 	}
 
 	if len(configSet) > 1 {
-		return 600, "", errors.New(fmt.Sprintf("%s canot multiple configed", strings.Join(configSet, ", ")))
+		return 600, "", errors.New(fmt.Sprintf("%s cannot be multiple configured", strings.Join(configSet, ", ")))
 	}
 	var oidcToken string
 	var tokenResponse *oidc.TokenResponse
 	var fetchOidcTokenErr error
 	if hasOidcTokenProviderDeviceCode {
 		tokenResponse, fetchOidcTokenErr = FetchIdTokenDeviceCode(oidcTokenProviderConfig.OidcTokenProviderDeviceCode, options)
-		isAccessToken := oidcTokenProviderConfig.TokenType == oidc.TokenAccessToken
+		// Instance authorization server era: default to access_token unless id_token is explicitly requested.
+		// Keyless STS providers (alibaba_cloud_sts / aws_sts) set TokenType=id_token explicitly since AssumeRoleWithOIDC needs it.
+		isIdToken := oidcTokenProviderConfig.TokenType == oidc.TokenIdToken
 		if tokenResponse != nil {
-			if isAccessToken {
-				oidcToken = tokenResponse.AccessToken
-			} else {
+			if isIdToken {
 				oidcToken = tokenResponse.IdToken
+			} else {
+				oidcToken = tokenResponse.AccessToken
 			}
 		}
 	} else if hasOidcTokenProviderClientCredentials {
-		tokenResponse, fetchOidcTokenErr = FetchAccessTokenClientCredentials(oidcTokenProviderConfig.OidcTokenProviderClientCredentials)
+		tokenResponse, fetchOidcTokenErr = FetchAccessTokenClientCredentials(oidcTokenProviderConfig.OidcTokenProviderClientCredentials, options.OidcCommonOptions)
 		if tokenResponse != nil {
 			oidcToken = tokenResponse.AccessToken
 		}
@@ -141,7 +143,7 @@ func isContentExpiringOrExpired(s *utils.StringWithTime) bool {
 		return true
 	}
 	valid := jwtTokenClaim.IsValidAtLeastThreshold(2 * time.Minute)
-	idaaslog.Debug.PrintfLn("Check JWT is expiring or expired: %s", !valid)
+	idaaslog.Debug.PrintfLn("Check JWT is expiring or expired: %t", !valid)
 	return !valid
 }
 
@@ -164,10 +166,10 @@ type SimpleJwtClaims struct {
 }
 
 func (t *SimpleJwtClaims) IsValidAtLeastThreshold(thresholdDuration time.Duration) bool {
-	idaaslog.Debug.PrintfLn("Check JWT is valid, expiration: %s, threshold: %d ms",
+	idaaslog.Debug.PrintfLn("Check JWT is valid, expiration: %d, threshold: %d ms",
 		t.ExpirationAt, thresholdDuration.Milliseconds())
 	valid := (t.ExpirationAt - time.Now().Unix()) > int64(thresholdDuration.Seconds())
-	idaaslog.Info.PrintfLn("Check JWT is valid: %s", valid)
+	idaaslog.Info.PrintfLn("Check JWT is valid: %t", valid)
 	return valid
 }
 

@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func FetchAccessTokenClientCredentialsPrivateCa(credentialConfig *config.OidcTokenProviderClientCredentialsConfig) (*oidc.TokenResponse, error) {
+func FetchAccessTokenClientCredentialsPrivateCa(credentialConfig *config.OidcTokenProviderClientCredentialsConfig, options *oidc.OidcCommonOptions) (*oidc.TokenResponse, error) {
 	tokenEndpoint := credentialConfig.TokenEndpoint
 	clientAssertionPrivateCaConfig := credentialConfig.ClientAssertionPrivateCaConfig
 
@@ -28,7 +28,7 @@ func FetchAccessTokenClientCredentialsPrivateCa(credentialConfig *config.OidcTok
 		return nil, errors.Wrap(err, "new jwt signer failed")
 	}
 	fetchTokenX509JwtBearerOptions := &oidc.FetchTokenX509JwtBearerOptions{
-		FetchTokenCommonOptions: buildFetchTokenCommonOptions(credentialConfig),
+		FetchTokenCommonOptions: buildFetchTokenCommonOptions(credentialConfig, options),
 		ClientX509:              certificate,
 		ClientX509Chain:         certificateChain,
 		JwtSigner:               jwtSigner,

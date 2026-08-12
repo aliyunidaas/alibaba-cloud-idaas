@@ -3,6 +3,7 @@ package oidc
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
@@ -10,6 +11,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 )
+
+// deviceAuthorizationTimeout bounds how long we poll the token endpoint waiting for the user
+// to complete browser SSO/MFA (RFC 8628). Default poll interval is 5s.
+const deviceAuthorizationTimeout = 3 * time.Minute
 
 type FetchDeviceCodeFlowOptions struct {
 	ClientId     string
@@ -120,7 +125,7 @@ func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOpti
 		return nil, errors.Wrapf(err, "failed to fetch device code from: %s", deviceAuthorization)
 	}
 	if deviceCodeErrorResponse != nil {
-		return nil, errors.Errorf("failed to fetch device code with response: %v", deviceCodeErrorResponse)
+		return nil, errors.Errorf("failed to fetch device code: %s", deviceCodeErrorResponse.FormatMessage())
 	}
 
 	if options.ShowQrCode {
@@ -153,8 +158,14 @@ func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOpti
 		DeviceCode:   deviceCodeResponse.DeviceCode,
 	}
 	sleepInterval := deviceCodeResponse.Interval
+	if sleepInterval <= 0 {
+		// RFC 8628 recommended default; also avoids busy-spinning when the server omits interval
+		sleepInterval = 5
+	}
 	tokenErrorCounting := 0
-	for i := 0; i < 100; i++ {
+	var lastErrorResponse *ErrorResponse
+	deadline := time.Now().Add(deviceAuthorizationTimeout)
+	for i := 0; time.Now().Before(deadline); i++ {
 		idaaslog.Debug.PrintfLn("Sleep %d s, #%d", sleepInterval, i)
 		utils.SleepSeconds(sleepInterval)
 
@@ -162,25 +173,25 @@ func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOpti
 		if err != nil {
 			tokenErrorCounting++
 			if tokenErrorCounting > 3 {
-				return nil, errors.Errorf("failed to fetch token with response: %w", err)
+				return nil, errors.Wrap(err, "failed to fetch token: repeated errors while polling token endpoint")
 			}
-			// LOGGING ...
+			idaaslog.Warn.PrintfLn("Fetch token transient error #%d: %v", tokenErrorCounting, err)
 			continue
 		}
 		// reset error counting
 		tokenErrorCounting = 0
 		if tokenErrorResponse != nil {
+			lastErrorResponse = tokenErrorResponse
 			idaaslog.Debug.PrintfLn("Token error with response: %+v", tokenErrorResponse)
 			if tokenErrorResponse.Error == ErrorCodeAuthorizationPending {
-				// JUST OK
+				// waiting for the user to finish browser SSO/MFA
 			} else if tokenErrorResponse.Error == ErrorCodeSlowDown {
 				sleepInterval++
 			} else if tokenErrorResponse.Error == ErrorAccessDenied {
-				utils.Stderr.Fprintf("failed to fetch token with response: %s", tokenErrorResponse.Error)
+				utils.Stderr.Fprintf("failed to fetch token: %s\n", tokenErrorResponse.FormatMessage())
 				return nil, errors.New(constants.ErrStopFallback)
 			} else {
-				utils.Stderr.Fprintf("failed to fetch token with response: %s", tokenErrorResponse.Error)
-				return nil, errors.Errorf("failed to fetch token with response: %s", tokenErrorResponse.Error)
+				return nil, errors.Errorf("failed to fetch token: %s", tokenErrorResponse.FormatMessage())
 			}
 		}
 		if tokenResponse != nil {
@@ -188,7 +199,12 @@ func FetchTokenViaDeviceCodeFlow(issuer string, options *FetchDeviceCodeFlowOpti
 			return tokenResponse, nil
 		}
 	}
-	return nil, errors.Errorf("failed to fetch token")
+	// Loop exhausted without a token: almost always the browser login (SSO/MFA) was not completed in time,
+	// or the device code has expired.
+	if lastErrorResponse != nil {
+		return nil, errors.Errorf("timed out waiting for device authorization after 3m (last status: %s)\n  hint: 请在浏览器打开上方 URL 完成 SSO/MFA 授权后重试 init；长时间未操作设备码会过期。", lastErrorResponse.FormatMessage())
+	}
+	return nil, errors.New("timed out waiting for device authorization after 3m\n  hint: 请在浏览器打开上方 URL 完成 SSO/MFA 授权后重试 init。")
 }
 
 func FetchDeviceCodeWithRetry(deviceAuthorization string, options *FetchDeviceCodeOptions) (

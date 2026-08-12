@@ -3,9 +3,11 @@ package utils
 import (
 	"crypto"
 	"encoding/asn1"
+	"encoding/base32"
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"net/url"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -34,6 +36,44 @@ func OpenUrl(url string) error {
 	return exec.Command(cmd, args...).Start()
 }
 
+type UrlBuilder struct {
+	BasePath string
+	Params   url.Values
+}
+
+func NewUrlBuilder(path string) *UrlBuilder {
+	return &UrlBuilder{
+		BasePath: path,
+		Params:   url.Values{},
+	}
+}
+
+func (b *UrlBuilder) AddQuery(key, value string) {
+	b.Params.Add(key, value)
+}
+
+func (b *UrlBuilder) BuildUrl() string {
+	var sb strings.Builder
+	sb.WriteString(b.BasePath)
+	if b.Params != nil {
+		appendAnd := strings.Contains(b.BasePath, "?")
+		for k, vs := range b.Params {
+			for _, v := range vs {
+				if appendAnd {
+					sb.WriteString("&")
+				} else {
+					sb.WriteString("?")
+				}
+				sb.WriteString(url.QueryEscape(k))
+				sb.WriteString("=")
+				sb.WriteString(url.QueryEscape(v))
+				appendAnd = true
+			}
+		}
+	}
+	return sb.String()
+}
+
 func NormalizeDeveloperApiEndpoint(developerApiEndpoint string) string {
 	if developerApiEndpoint == "" {
 		return ""
@@ -54,6 +94,13 @@ func Sha256ToHex(message string) string {
 	hash.Write([]byte(message))
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes)
+}
+
+func Sha256ToBase32(message string) string {
+	hash := crypto.SHA256.New()
+	hash.Write([]byte(message))
+	hashBytes := hash.Sum(nil)
+	return strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(hashBytes))
 }
 
 func SleepSeconds(interval int64) {

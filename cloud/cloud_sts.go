@@ -7,6 +7,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/alibaba_cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/aws"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/cloud_account"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/credential"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
 	"github.com/pkg/errors"
@@ -36,6 +37,7 @@ func FetchCloudSts(profile string, cloudStsConfig *config.CloudStsConfig, option
 	hasAws := cloudStsConfig.Aws != nil
 	hasOidcToken := cloudStsConfig.OidcToken != nil
 	hasAccountAccount := cloudStsConfig.CloudAccount != nil
+	hasCredential := cloudStsConfig.Credential != nil
 
 	var clouds []string
 	if hasAlibabaCloud {
@@ -49,6 +51,9 @@ func FetchCloudSts(profile string, cloudStsConfig *config.CloudStsConfig, option
 	}
 	if hasAccountAccount {
 		clouds = append(clouds, "CloudAccount")
+	}
+	if hasCredential {
+		clouds = append(clouds, "Credential")
 	}
 
 	if len(clouds) > 1 {
@@ -84,6 +89,11 @@ func FetchCloudSts(profile string, cloudStsConfig *config.CloudStsConfig, option
 			ForceNewCloudToken: options.ForceNewCloudToken,
 		}
 		return cloud_account.FetchCloudAccountTokenWithOidcConfig(profile, cloudStsConfig.CloudAccount, cloudAccountTokenWithOidcConfigOptions)
+	}
+	if hasCredential {
+		return credential.FetchCredentialWithConfig(profile, cloudStsConfig.Credential, &credential.FetchCredentialWithConfigOptions{
+			ForceNew: options.ForceNew || options.ForceNewCloudToken,
+		})
 	}
 	return nil, errors.New("no cloud provider is set")
 }

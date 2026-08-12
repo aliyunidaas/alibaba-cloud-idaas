@@ -81,7 +81,8 @@ func fetchOpenClawSecret(configFilename, profile string, forceNew bool) error {
 	}
 
 	if openClawSecretProviderRequest.ProtocolVersion != openclaw.ProtocolVersion1 {
-		return fmt.Errorf("unsupported protocol version: %s", openClawSecretProviderRequest.ProtocolVersion)
+		//return fmt.Errorf("unsupported protocol version: %s", openClawSecretProviderRequest.ProtocolVersion)
+		idaaslog.Error.PrintfLn("unsupported protocol version: %d, request: %s", openClawSecretProviderRequest.ProtocolVersion, requestJson)
 	}
 
 	// access token
@@ -102,7 +103,10 @@ func fetchOpenClawSecret(configFilename, profile string, forceNew bool) error {
 	idaaslog.Unsafe.PrintfLn("Access token: %s", accessToken)
 
 	for _, id := range openClawSecretProviderRequest.Ids {
-		cred, err := credential.FetchCredential(credentialEndpoint, id, accessToken)
+		cred, err := credential.FetchCredential(id, &credential.CredentialOptions{
+			Endpoint:  credentialEndpoint,
+			AccessKey: accessToken,
+		})
 		if err != nil {
 			idaaslog.Error.PrintfLn("failed to fetch %s, error: %s", id, err)
 			errors[id] = &openclaw.OpenClawSecretProviderResponseErrorMessage{

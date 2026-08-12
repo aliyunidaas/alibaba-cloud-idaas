@@ -61,7 +61,7 @@ func (c *OidcTokenProviderClientCredentialsConfig) Digest() string {
 	}
 	// ClientSecret do note effect digest(cache)
 	return digest(c.TokenEndpoint, c.ClientId, c.Scope, c.ApplicationFederatedCredentialName,
-		c.ClientAssertionSinger.Digest(),
+		c.GetClientAssertionSigner().Digest(),
 		c.ClientAssertionPkcs7Config.Digest(),
 		c.ClientAssertionPrivateCaConfig.Digest(),
 		c.ClientAssertionOidcTokenConfig.Digest())
@@ -109,7 +109,7 @@ func (c *OidcTokenConfig) Digest() string {
 	return digest(c.Provider, c.OidcToken, fileModTime(c.OidcTokenFile))
 }
 
-func (c *ExSingerConfig) Digest() string {
+func (c *ExSignerConfig) Digest() string {
 	if c == nil {
 		return ""
 	}
@@ -141,7 +141,7 @@ func (c *ExSignerExternalCommandConfig) Digest() string {
 	return digest(c.Command, c.Parameter)
 }
 
-func (c *ExSingerKeyFileConfig) Digest() string {
+func (c *ExSignerKeyFileConfig) Digest() string {
 	if c == nil {
 		return ""
 	}

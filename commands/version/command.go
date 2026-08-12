@@ -8,10 +8,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var (
-	Version string = "none"
-)
-
 func BuildCommand() *cli.Command {
 	var flags []cli.Flag
 	return &cli.Command{
@@ -25,18 +21,10 @@ func BuildCommand() *cli.Command {
 }
 
 func version() error {
-	fmt.Printf("Version: %s\n", GetVersion())
+	fmt.Printf("Version: %s\n", constants.Version)
 	return nil
 }
 
-func GetVersion() string {
-	if Version == "" || Version == "none" {
-		return constants.AlibabaCloudIdaasCliVersion
-	} else {
-		return Version
-	}
-}
-
 func IsPreRelease() bool {
-	return strings.Contains(Version, "-pre-release")
+	return strings.Contains(constants.Version, "-pre-release")
 }

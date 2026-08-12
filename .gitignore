@@ -1,6 +1,7 @@
+.obsidian/
+.qwen/
 .DS_Store
 .idea/
-justfile
 out/
 alibaba-cloud-idaas
 alibaba-cloud-idaas*

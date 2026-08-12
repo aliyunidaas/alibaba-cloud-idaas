@@ -2,7 +2,6 @@ package cloud_account
 
 import (
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -124,21 +123,35 @@ func isContentExpired(s *utils.StringWithTime) bool {
 
 func fetchCloudAccountToken(cloudAccountEndpoint, cloudAccountRoleExternalId, accessToken string) (string, error) {
 	client := utils.BuildHttpClient()
-	endpoint := cloudAccountEndpoint
-	if strings.Contains(cloudAccountEndpoint, "?") {
-		endpoint += "&"
-	} else {
-		endpoint += "?"
-	}
-	endpoint += fmt.Sprintf("cloudAccountRoleExternalId=%s", url.QueryEscape(cloudAccountRoleExternalId))
+	endpoint := utils.NewUrlBuilder(cloudAccountEndpoint)
+	endpoint.AddQuery("cloudAccountRoleExternalId", cloudAccountRoleExternalId)
 	headers := map[string]string{
 		"Authorization": "Bearer " + accessToken,
 	}
-	cloudAccountTokenJson, err := utils.FetchAsString(client, utils.HttpMethodGet, endpoint, headers)
+	cloudAccountTokenJson, err := utils.FetchAsString(client, utils.HttpMethodGet, endpoint.BuildUrl(), headers)
 	if err != nil {
+		if hint := obtainErrorHint(err.Error()); hint != "" {
+			return "", errors.Wrapf(err,
+				"Fetch cloud account token failed, endpoint: %s, external ID: %s\n  hint: %s", cloudAccountEndpoint, cloudAccountRoleExternalId, hint)
+		}
 		return "", errors.Wrapf(err,
 			"Fetch cloud account token failed, endpoint: %s, external ID: %s", cloudAccountEndpoint, cloudAccountRoleExternalId)
 	}
 	idaaslog.Unsafe.PrintfLn("Fetch cloud account token: %s", cloudAccountTokenJson)
 	return cloudAccountTokenJson, nil
+}
+
+// obtainErrorHint maps known obtainAccessCredential error bodies to actionable guidance.
+func obtainErrorHint(errStr string) string {
+	switch {
+	case strings.Contains(errStr, "invalid_audience"), strings.Contains(errStr, "invalid_client_credential"):
+		return "换发时服务端 PAM→云 STS 内部联邦的 client_assertion(private_key_jwt) audience 无效——通常是该云账号在当前环境的 OIDC 联邦/授权服务器 audience 配置问题（非客户端可修复），请联系后端/管理员核对云账号 onboarding 与联邦 audience。"
+	case strings.Contains(errStr, "operation_denied_by_license"):
+		return "该操作被实例 License 限制，请确认实例 License 版本与应用授权，或联系管理员开通对应能力。"
+	case strings.Contains(errStr, "has not been authorized by resource server"):
+		return "broker 客户端未被委派到 PAM 资源服务器，请配置 M2M 委派授权（scope: cloud_account_role:obtain_access_credential）。"
+	case strings.Contains(errStr, "not_found"):
+		return "云角色不存在或未授权给当前用户，请确认角色已 onboard 且 PS 授权规则已授予该用户。"
+	}
+	return ""
 }

@@ -8,10 +8,12 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idp"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 )
 
 type FetchOidcTokenConfigOptions struct {
+	OidcCommonOptions  *oidc.OidcCommonOptions
 	ForceNew           bool
 	ForceNewCloudToken bool
 	FetchTokenType     FetchOidcTokenType
@@ -52,8 +54,9 @@ func FetchOidcToken(profile string, oidcTokenProviderConfig *config.OidcTokenPro
 func fetchContent(oidcTokenProviderConfig *config.OidcTokenProviderConfig, options *FetchOidcTokenConfigOptions) (int, string, error) {
 	startTime := time.Now().Unix()
 	fetchOidcTokenOptions := &idp.FetchOidcTokenOptions{
-		ForceNew: options.ForceNew,
-		CacheKey: oidcTokenProviderConfig.GetCacheKey(),
+		OidcCommonOptions: options.OidcCommonOptions,
+		ForceNew:          options.ForceNew,
+		CacheKey:          oidcTokenProviderConfig.GetCacheKey(),
 	}
 	tokenResponse, tokenResponseErr := idp.FetchTokenResponse(oidcTokenProviderConfig, fetchOidcTokenOptions)
 	if tokenResponseErr == nil && tokenResponse != nil {

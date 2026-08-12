@@ -137,14 +137,14 @@ type JwtSignerOptions struct {
 type ExJwtSigner struct {
 	keyID  string
 	alg    JwtSignAlgorithm
-	singer ExSigner
+	signer ExSigner
 }
 
 func NewExJwtSigner(keyID string, alg JwtSignAlgorithm, signer ExSigner) *ExJwtSigner {
 	return &ExJwtSigner{
 		keyID:  keyID,
 		alg:    alg,
-		singer: signer,
+		signer: signer,
 	}
 }
 
@@ -200,7 +200,7 @@ func (s *ExJwtSigner) SignJwt(header, claim map[string]interface{}) (string, err
 	claimBase64Str := base64.RawURLEncoding.EncodeToString(claimJson)
 	headerAndClaim := headerBase64Str + "." + claimBase64Str
 	idaaslog.Debug.PrintfLn("SignJwt: header.claim is %#v", headerAndClaim)
-	signature, err := s.singer.Sign(rand.Reader, s.alg, []byte(headerAndClaim))
+	signature, err := s.signer.Sign(rand.Reader, s.alg, []byte(headerAndClaim))
 	if err != nil {
 		return "", errors.Wrapf(err, "sign header failed with header %s", headerAndClaim)
 	}
@@ -217,8 +217,8 @@ func (s *ExJwtSigner) SignJwt(header, claim map[string]interface{}) (string, err
 	return jwt, nil
 }
 
-func (s *ExJwtSigner) GetExtSinger() ExSigner {
-	return s.singer
+func (s *ExJwtSigner) GetExtSigner() ExSigner {
+	return s.signer
 }
 
 func generateJti() string {

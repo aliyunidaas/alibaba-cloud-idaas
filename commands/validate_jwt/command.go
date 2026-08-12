@@ -131,7 +131,7 @@ func validateJwt(token string, ) error {
 		return errors.New("invalid JWT signature, error: " + err.Error())
 	}
 
-	fmt.Printf(utils.Green("[OK] Verify JWT signature success\n", true))
+	fmt.Print(utils.Green("[OK] Verify JWT signature success\n", true))
 
 	printJwt(payload)
 	return nil
@@ -226,9 +226,9 @@ func printJwtExp(payload map[string]any, nowUnixTimestamp int64) (int64, bool) {
 
 func printJwtValidation(isJwtValid bool) {
 	if isJwtValid {
-		fmt.Printf(utils.WBold(utils.WGreen("[OK] JWT is VALID\n")))
+		fmt.Print(utils.WBold(utils.WGreen("[OK] JWT is VALID\n")))
 	} else {
-		fmt.Printf(utils.WBold(utils.WRed("[ERROR] JWT is INVALID\n")))
+		fmt.Print(utils.WBold(utils.WRed("[ERROR] JWT is INVALID\n")))
 	}
 }
 

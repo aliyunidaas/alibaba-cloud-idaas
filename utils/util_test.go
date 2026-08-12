@@ -359,3 +359,18 @@ func TestAlignEcCoord_EdgeCases(t *testing.T) {
 		}
 	}
 }
+
+func TestUrlBuilder(t *testing.T) {
+	b := NewUrlBuilder("https://example.com")
+	if b.BuildUrl() != "https://example.com" {
+		t.Errorf("BuildUrl() returned %s", b.BuildUrl())
+	}
+	b.AddQuery("key", "value")
+	if b.BuildUrl() != "https://example.com?key=value" {
+		t.Errorf("BuildUrl() returned %s", b.BuildUrl())
+	}
+	b.AddQuery("key2", "value 2")
+	if b.BuildUrl() != "https://example.com?key=value&key2=value+2" {
+		t.Errorf("BuildUrl() returned %s", b.BuildUrl())
+	}
+}

@@ -18,10 +18,6 @@ import (
 	"github.com/go-piv/piv-go/piv"
 )
 
-func YubiKeyPivSingerEnabled() bool {
-	return true
-}
-
 type YubiKeyPivSigner struct {
 	pin       string
 	pinPolicy piv.PINPolicy

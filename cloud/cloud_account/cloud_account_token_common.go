@@ -22,12 +22,20 @@ type CloudAccountTokenCloudAccountRoleAccessCredential struct {
 	AccessCredentialExpiresAt int64 `json:"accessCredentialExpiresAt"`
 
 	AlibabaCloudStsToken *CloudAccountTokenAlibabaCloudStsToken `json:"alibabaCloudStsToken"`
+	AwsStsToken          *CloudAccountTokenAwsStsToken          `json:"awsStsToken"`
 }
 
 type CloudAccountTokenAlibabaCloudStsToken struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	AccessKeySecret string `json:"accessKeySecret"`
 	StsToken        string `json:"securityToken"`
+	Expiration      string `json:"expiration"`
+}
+
+type CloudAccountTokenAwsStsToken struct {
+	AccessKeyId     string `json:"accessKeyId"`
+	SecretAccessKey string `json:"secretAccessKey"`
+	SessionToken    string `json:"sessionToken"`
 	Expiration      string `json:"expiration"`
 }
 
@@ -66,6 +74,13 @@ func (t *CloudAccountToken) IsValidAtLeastThreshold(thresholdDuration time.Durat
 func (t *CloudAccountToken) IsAlibabaCloudToken() bool {
 	if t.CloudAccountRoleAccessCredential != nil {
 		return t.CloudAccountRoleAccessCredential.AlibabaCloudStsToken != nil
+	}
+	return false
+}
+
+func (t *CloudAccountToken) IsAwsToken() bool {
+	if t.CloudAccountRoleAccessCredential != nil {
+		return t.CloudAccountRoleAccessCredential.AwsStsToken != nil
 	}
 	return false
 }

@@ -116,9 +116,8 @@ func DumpError(err error) string {
 			sb.WriteString(fmt.Sprintf("%+s:%d\n", f, f))
 		}
 		return sb.String()
-	} else {
-		return fmt.Sprintf("Error: %+v", err)
 	}
+	return fmt.Sprintf("Error: %+v", err)
 }
 
 func internalPrintf(format string, a ...interface{}) {

@@ -187,12 +187,12 @@ func showClientCredentials(color bool, clientCredentials *config.OidcTokenProvid
 			fmt.Printf(" - %s: %s\n", pad2("ClientSecret"), utils.Green("******", color))
 		}
 		fmt.Printf(" - %s: %s\n", pad2("Scope"), utils.Green(clientCredentials.Scope, color))
-		clientAssertionSinger := clientCredentials.ClientAssertionSinger
-		if clientAssertionSinger != nil {
-			showPkcs11(color, clientAssertionSinger, "")
-			showYubiKeyPiv(color, clientAssertionSinger, "")
-			showExternalCommand(color, clientAssertionSinger, "")
-			showKeyFile(color, clientAssertionSinger, "")
+		clientAssertionSigner := clientCredentials.GetClientAssertionSigner()
+		if clientAssertionSigner != nil {
+			showPkcs11(color, clientAssertionSigner, "")
+			showYubiKeyPiv(color, clientAssertionSigner, "")
+			showExternalCommand(color, clientAssertionSigner, "")
+			showKeyFile(color, clientAssertionSigner, "")
 		}
 		showOidcTokenConfig(color, clientCredentials)
 		showPkcs7Config(color, clientCredentials)
@@ -299,10 +299,10 @@ func showPrivateCaConfig(color bool, clientCredentials *config.OidcTokenProvider
 	}
 }
 
-func showKeyFile(color bool, clientAssertionSinger *config.ExSingerConfig, prefix string) {
-	keyFile := clientAssertionSinger.KeyFile
+func showKeyFile(color bool, clientAssertionSigner *config.ExSignerConfig, prefix string) {
+	keyFile := clientAssertionSigner.KeyFile
 	if keyFile != nil {
-		fmt.Printf("%s - %s: %s\n", prefix, pad2("Singer"), utils.Green("Key File", color))
+		fmt.Printf("%s - %s: %s\n", prefix, pad2("Signer"), utils.Green("Key File", color))
 		if keyFile.Key != "" {
 			if strings.Contains(keyFile.Key, "ENCRYPTED") {
 				fmt.Printf("%s   - %s: %s\n", prefix, pad3("Key"), utils.Green(keyFile.Key, color))
@@ -323,19 +323,19 @@ func showKeyFile(color bool, clientAssertionSinger *config.ExSingerConfig, prefi
 	}
 }
 
-func showExternalCommand(color bool, clientAssertionSinger *config.ExSingerConfig, prefix string) {
-	externalCommand := clientAssertionSinger.ExternalCommand
+func showExternalCommand(color bool, clientAssertionSigner *config.ExSignerConfig, prefix string) {
+	externalCommand := clientAssertionSigner.ExternalCommand
 	if externalCommand != nil {
-		fmt.Printf("%s - %s: %s\n", prefix, pad2("Singer"), utils.Green("External Command", color))
+		fmt.Printf("%s - %s: %s\n", prefix, pad2("Signer"), utils.Green("External Command", color))
 		fmt.Printf("%s   - %s: %s\n", prefix, pad3("Command"), utils.Green(externalCommand.Command, color))
 		fmt.Printf("%s   - %s: %s\n", prefix, pad3("Parameter"), utils.Green(externalCommand.Parameter, color))
 	}
 }
 
-func showYubiKeyPiv(color bool, clientAssertionSinger *config.ExSingerConfig, prefix string) {
-	yubikeyPiv := clientAssertionSinger.YubikeyPiv
+func showYubiKeyPiv(color bool, clientAssertionSigner *config.ExSignerConfig, prefix string) {
+	yubikeyPiv := clientAssertionSigner.YubikeyPiv
 	if yubikeyPiv != nil {
-		fmt.Printf("%s - %s: %s\n", prefix, pad2("Singer"), utils.Green("YubiKey PIV", color))
+		fmt.Printf("%s - %s: %s\n", prefix, pad2("Signer"), utils.Green("YubiKey PIV", color))
 		fmt.Printf("%s   - %s: %s\n", prefix, pad3("Slot"), utils.Green(yubikeyPiv.Slot, color))
 		if yubikeyPiv.Pin != "" {
 			fmt.Printf("%s   - %s: %s\n", prefix, pad3("Pin"), utils.Green("******", color))
@@ -344,10 +344,10 @@ func showYubiKeyPiv(color bool, clientAssertionSinger *config.ExSingerConfig, pr
 	}
 }
 
-func showPkcs11(color bool, clientAssertionSinger *config.ExSingerConfig, prefix string) {
-	pkcs11 := clientAssertionSinger.Pkcs11
+func showPkcs11(color bool, clientAssertionSigner *config.ExSignerConfig, prefix string) {
+	pkcs11 := clientAssertionSigner.Pkcs11
 	if pkcs11 != nil {
-		fmt.Printf("%s - %s: %s\n", prefix, pad2("Singer"), utils.Green("PKCS#11", color))
+		fmt.Printf("%s - %s: %s\n", prefix, pad2("Signer"), utils.Green("PKCS#11", color))
 		fmt.Printf("%s   - %s: %s\n", prefix, pad3("LibraryPath"), utils.Green(pkcs11.LibraryPath, color))
 		fmt.Printf("%s   - %s: %s\n", prefix, pad3("TokenLabel"), utils.Green(pkcs11.TokenLabel, color))
 		fmt.Printf("%s   - %s: %s\n", prefix, pad3("KeyLabel"), utils.Green(pkcs11.KeyLabel, color))

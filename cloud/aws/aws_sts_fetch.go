@@ -10,6 +10,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idp"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
@@ -38,6 +39,9 @@ func FetchAwsStsWithOidcConfig(profile string, awsCloudStsConfig *config.AwsClou
 	if awsCloudStsConfig.OidcTokenProvider == nil {
 		return nil, errors.New("OidcTokenProvider is required")
 	}
+	// Keyless STS presents the OIDC token to AWS AssumeRoleWithWebIdentity, which requires an id_token
+	// on the device_code path. Set it explicitly so behavior is independent of the global default.
+	awsCloudStsConfig.OidcTokenProvider.TokenType = oidc.TokenIdToken
 	options := &FetchAwsStsWithOidcOptions{
 		Region:          awsCloudStsConfig.Region,
 		RoleArn:         awsCloudStsConfig.RoleArn,

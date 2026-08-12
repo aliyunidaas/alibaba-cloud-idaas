@@ -119,6 +119,14 @@ func execute(configFilename, profile string, showToken, forceNew, forceNewCloudT
 			}
 			return executeCommand(args, environment)
 		}
+		if cloudAccountToken.IsAwsToken() {
+			awsSts := cloud.ConvertCloudAccountTokenAwsStsTokenToAwsStsToken(credential.AwsStsToken)
+			environment, err := putEnvForAwsStsToken(awsSts, envRegion, cloudStsConfig)
+			if err != nil {
+				return err
+			}
+			return executeCommand(args, environment)
+		}
 
 		return fmt.Errorf("unknown Cloud Account token")
 	}

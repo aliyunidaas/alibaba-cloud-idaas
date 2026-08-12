@@ -90,6 +90,10 @@ func ReadCloudCredentialConfig(configFilename string) (*CloudCredentialConfig, e
 			config.Version, constants.UrlIdaasProduct)
 	}
 
+	for profile, cloudStsConfig := range config.Profile {
+		cloudStsConfig.WarnDeprecatedFields(profile)
+	}
+
 	return &config, nil
 }
 

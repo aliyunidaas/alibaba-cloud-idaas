@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func FetchAccessTokenClientCredentials(credentialConfig *config.OidcTokenProviderClientCredentialsConfig) (*oidc.TokenResponse, error) {
+func FetchAccessTokenClientCredentials(credentialConfig *config.OidcTokenProviderClientCredentialsConfig, options *oidc.OidcCommonOptions) (*oidc.TokenResponse, error) {
 	if credentialConfig == nil {
 		return nil, errors.New("oidcTokenProviderClientCredentialsConfig is nil")
 	}
@@ -20,7 +20,7 @@ func FetchAccessTokenClientCredentials(credentialConfig *config.OidcTokenProvide
 	}
 
 	hasClientSecret := credentialConfig.ClientSecret != ""
-	hasClientAssertionSigner := credentialConfig.ClientAssertionSinger != nil
+	hasClientAssertionSigner := credentialConfig.GetClientAssertionSigner() != nil
 	hasClientAssertionPkcs7 := credentialConfig.ClientAssertionPkcs7Config != nil
 	hasClientAssertionPrivateCa := credentialConfig.ClientAssertionPrivateCaConfig != nil
 	hasClientAssertionOidcToken := credentialConfig.ClientAssertionOidcTokenConfig != nil
@@ -47,15 +47,15 @@ func FetchAccessTokenClientCredentials(credentialConfig *config.OidcTokenProvide
 	}
 
 	if hasClientSecret {
-		return FetchAccessTokenClientCredentialsClientIdSecret(credentialConfig)
+		return FetchAccessTokenClientCredentialsClientIdSecret(credentialConfig, options)
 	} else if hasClientAssertionSigner {
-		return FetchAccessTokenClientCredentialsRfc7523(credentialConfig)
+		return FetchAccessTokenClientCredentialsRfc7523(credentialConfig, options)
 	} else if hasClientAssertionPkcs7 {
-		return FetchAccessTokenClientCredentialsPkcs7(credentialConfig)
+		return FetchAccessTokenClientCredentialsPkcs7(credentialConfig, options)
 	} else if hasClientAssertionPrivateCa {
-		return FetchAccessTokenClientCredentialsPrivateCa(credentialConfig)
+		return FetchAccessTokenClientCredentialsPrivateCa(credentialConfig, options)
 	} else if hasClientAssertionOidcToken {
-		return FetchAccessTokenClientCredentialsOidcToken(credentialConfig)
+		return FetchAccessTokenClientCredentialsOidcToken(credentialConfig, options)
 	} else {
 		return nil, errors.New("client auth method must set one")
 	}

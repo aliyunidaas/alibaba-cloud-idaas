@@ -21,14 +21,14 @@ const (
 	Pkcs7ProviderAzure        = "azure"
 )
 
-func FetchAccessTokenClientCredentialsPkcs7(credentialConfig *config.OidcTokenProviderClientCredentialsConfig) (*oidc.TokenResponse, error) {
+func FetchAccessTokenClientCredentialsPkcs7(credentialConfig *config.OidcTokenProviderClientCredentialsConfig, options *oidc.OidcCommonOptions) (*oidc.TokenResponse, error) {
 	tokenEndpoint := credentialConfig.TokenEndpoint
 	pkcs7, err := fetchPkcs7(credentialConfig)
 	if err != nil {
 		return nil, err
 	}
 	fetchTokenPkcs7BearerOptions := &oidc.FetchTokenPkcs7BearerOptions{
-		FetchTokenCommonOptions: buildFetchTokenCommonOptions(credentialConfig),
+		FetchTokenCommonOptions: buildFetchTokenCommonOptions(credentialConfig, options),
 		Pkcs7:                   base64.StdEncoding.EncodeToString(pkcs7),
 	}
 	tokenResponse, errorResponse, err := oidc.FetchTokenPkcs7Bearer(tokenEndpoint, fetchTokenPkcs7BearerOptions)
@@ -61,10 +61,7 @@ func fetchPkcs7(credentialConfig *config.OidcTokenProviderClientCredentialsConfi
 
 // reference: https://www.alibabacloud.com/help/en/ecs/user-guide/use-instance-identities
 func fetchPkcs7ForAlibabaCloud(instanceId, mode string) ([]byte, error) {
-	isHardenMode, err := getAlibabaCloudHardenMode(mode)
-	if err != nil {
-		return nil, err
-	}
+	isHardenMode := getAlibabaCloudHardenMode(mode)
 	client := utils.BuildHttpClient()
 	token := ""
 	if isHardenMode {
@@ -123,14 +120,15 @@ func fetchPkcs7ForAzure() ([]byte, error) {
 	return pkcs7, nil
 }
 
-func getAlibabaCloudHardenMode(mode string) (bool, error) {
-	if mode == "secure" {
-		return true, nil
-	} else if mode == "" || mode == "normal" {
-		return false, nil
-	} else {
-		return false, errors.New("unknown alibaba cloud mode: " + mode + ", must be secure or normal")
+func getAlibabaCloudHardenMode(mode string) bool {
+	if mode == "normal" {
+		return false
 	}
+	if mode == "" || mode == "secure" {
+		return true
+	}
+	idaaslog.Info.PrintfLn("Alibaba Cloud harden mode is not configured, default use harden mode")
+	return true
 }
 
 func buildAlibabaCloudPkcs7Audience(instanceId string) (string, error) {

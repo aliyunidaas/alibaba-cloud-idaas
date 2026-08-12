@@ -12,9 +12,26 @@ Build `alibaba-cloud-idaas` just run `go build`:
 go build
 ```
 
+Build with an explicit output binary name:
+```shell
+go build -o alibaba-cloud-idaas .
+```
+
 Feature PKCS#11 and YubiKey can be turned off via:
 ```shell
 go build -tags disable_pkcs11,disable_yubikey_piv
+```
+
+Install to `$GOPATH/bin` (so `alibaba-cloud-idaas` is on your `PATH`):
+```shell
+go install
+```
+
+Cross compile for other platforms:
+```shell
+GOOS=darwin  GOARCH=arm64 go build -o alibaba-cloud-idaas .
+GOOS=linux   GOARCH=amd64 go build -o alibaba-cloud-idaas .
+GOOS=windows GOARCH=amd64 go build -o alibaba-cloud-idaas.exe .
 ```
 
 ## External signers
@@ -142,7 +159,7 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
             "token_endpoint": "https://ziwd****.aliyunidaas.com/api/v2/iauths_system/oauth2/token",
             "client_id": "app_m7iug*********************",
             "scope": "https://test.example.com|.all",
-            "client_assertion_singer": {
+            "client_assertion_signer": {
               "key_id": "key1",
               "algorithm": "RS256",
               "yubikey_piv": {
@@ -175,7 +192,7 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
             "token_endpoint": "https://ziwd****.aliyunidaas.com/api/v2/iauths_system/oauth2/token",
             "client_id": "app_m7iug*********************",
             "scope": "https://test.example.com|.all",
-            "client_assertion_singer": {
+            "client_assertion_signer": {
               "key_id": "key1",
               "algorithm": "RS256",
               "pkcs11": {
@@ -238,6 +255,37 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
   }
 }
 ```
+### Fetch Static Credential
+
+Obtain a static credential (e.g. API key) managed by IDaaS via the Developer API:
+
+```json
+{
+  "version": "1",
+  "profile": {
+    "my-api-key": {
+      "credential": {
+        "instance_id": "idaas_wrwsx*********************",
+        "developer_api_endpoint": "https://eiam-developerapi.cn-hangzhou.aliyuncs.com",
+        "credential_identifier": "default_model",
+        "access_token_provider": {
+          "device_code": {
+            "issuer": "https://<instance>/api/v2/<auth-server-id>/oauth2",
+            "client_id": "iap_developer"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+```shell
+alibaba-cloud-idaas fetch-token --profile my-api-key
+```
+
+> Note: for `device_code`, the token type now defaults to **access_token** (instance authorization server era).
+> Keyless STS providers (`alibaba_cloud_sts` / `aws_sts`) automatically use `id_token` as required by `AssumeRoleWithOIDC`.
 
 
 ## Run Commands
@@ -245,11 +293,48 @@ Follow the specification: RFC 8628: OAuth 2.0 Device Authorization Grant.
 Display help message `alibaba-cloud-idaas --help`.
 
 Subcommands:
-- `show-profiles` - Show profiles from `~/.aliyun/alibaba-cloud-idaas.json` or `~/.cloud_idaas/idaas-cli.json`
-- `fetch-token`   - Fetch STS token, output STS Token to `stdout` in JSON format
-- `show-token`    - Show STS token
-- `clean-cache`   - Clean local cache, directory `~/.aliyun/alibaba-cloud-idaas/`
-- `execute`       - Export STS token to environment and run command
+- `onboard`             - Zero-config onboard: discover instance, device-code login, list assumable cloud roles, generate profiles
+- `login`               - Device-code login to IDaaS instance and cache access token
+- `fetch-token`         - Fetch STS token, output STS Token to `stdout` in JSON format
+- `show-token`          - Show STS token (human-readable)
+- `show-profiles`       - Show profiles from `~/.aliyun/alibaba-cloud-idaas.json` or `~/.cloud_idaas/idaas-cli.json`
+- `show`                - Query subcommands (profiles / roles / cache / token / status / instance / signer-key)
+- `status`              - Show current profile / login status / serve daemon status
+- `serve`               - Start local HTTP credential service (for SDK `credentials_uri`)
+- `execute`             - Export STS token to environment and run command
+- `logout`              - Clear cached tokens (profile config is preserved)
+- `clean-cache`         - Clean local cache, directory `~/.cloud_idaas/cloud-cli/`
+- `show-signer-public-key` - Show signer public key
+- `qr`                  - Generate QR code
+- `validate-jwt`        - Validate JWT (RS256 only)
+- `openclaw-secret`     - Get OpenClaw secret
+- `agent`               - Agent subcommands (access-token / get-secret / put-secret / token-exchange / decrypt-secret)
+
+### Zero-config onboard
+
+One command to onboard: given only the instance domain, `onboard` discovers the instance
+(`/.well-known/cloud-idaas-configuration` → `instance_id` / `default_authorization_server` /
+`developer_api_endpoint`), performs a device-code login (broker client defaults to `iap_developer`,
+override with `--client-id`), lists the cloud roles the current user can assume, and generates
+`cloud_account_token` profiles (plus aliyun-cli `External` profiles) — no AK required.
+
+```shell
+alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com
+# override broker client / prefer VPC endpoint:
+alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx --vpc
+```
+
+Login (device code) uses the composite scope `urn:cloud:idaas:pam|cloud_account_role:obtain_access_credential`
+against the instance authorization server. After `onboard`, use any generated profile directly:
+
+```shell
+aliyun --profile aliyun-<role> sts GetCallerIdentity
+aliyun --profile aliyun-<role> oss ls
+```
+
+> Prerequisites: the broker client application must be delegated to the PAM resource server
+> (`urn:cloud:idaas:pam`) scope `cloud_account_role:obtain_access_credential` and have the
+> `device_code` grant enabled; target cloud roles must be onboarded and authorized to the user.
 
 ### Fetch STS token
 
@@ -363,7 +448,7 @@ Bucket Number is: 3
 #### Method 1.1 - direct execute
 
 ```shell
-alibaba-cloud-idaas execute --profile aliyun2 -env-region cn-hangzhou aliyun sts GetCallerIdentity
+alibaba-cloud-idaas execute --profile aliyun2 --env-region cn-hangzhou -- aliyun sts GetCallerIdentity
 ```
 
 ```json
@@ -471,7 +556,7 @@ PKCS#7 config sample:
     "agent1": {
       "agent": {
         "instance_id": "idaas_wrws**********************",
-        "developer_api_endpoint": "eiam-developerapi.cn-hangzhou.aliyuncs.com",
+        "developer_api_endpoint": "https://eiam-developerapi.cn-hangzhou.aliyuncs.com",
         "access_token_provider": {
           "client_credentials": {
             "token_endpoint": "https://zi******.aliyunidaas.com/api/v2/iauths_system/oauth2/token",
@@ -499,7 +584,7 @@ ECS RAM Role config sample:
   "profile": {
     "agent2": {
       "instance_id": "idaas_wrws**********************",
-      "developer_api_endpoint": "eiam-developerapi.cn-hangzhou.aliyuncs.com",
+      "developer_api_endpoint": "https://eiam-developerapi.cn-hangzhou.aliyuncs.com",
       "access_token_provider": {
         "open_api": {
           "instance_id": "idaas_wrws**********************",

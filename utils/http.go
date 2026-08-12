@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
@@ -9,12 +10,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/user"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/utils/features"
 	"github.com/pkg/errors"
 )
 
@@ -29,7 +32,7 @@ const (
 	HttpMethodPost = "POST"
 )
 
-var UserAgent = getUserAgent()
+var UserAgent = GetUserAgent()
 
 func PostHttp(postUrl string, parameters map[string]string) (int, string, error) {
 	client := BuildHttpClient()
@@ -51,6 +54,7 @@ func PostHttp(postUrl string, parameters map[string]string) (int, string, error)
 		return 0, "", errors.Wrapf(err, "do post request: %s", postUrl)
 	}
 	defer resp.Body.Close()
+	logHttpResponse(resp)
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, "", errors.Wrapf(err, "read response body: %s", postUrl)
@@ -70,6 +74,7 @@ func GetHttp(getUrl string) (int, string, error) {
 		return 0, "", errors.Wrapf(err, "do get request: %s", getUrl)
 	}
 	defer resp.Body.Close()
+	logHttpResponse(resp)
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return 0, "", errors.Wrapf(err, "read response body: %s", getUrl)
@@ -85,8 +90,27 @@ func FetchAsString(client *http.Client, method, endpoint string, headers map[str
 	return string(body), nil
 }
 
+func FetchWithBodyAsString(client *http.Client, method, endpoint string, headers map[string]string, requestBytes []byte) (string, error) {
+	body, err := FetchWithBody(client, method, endpoint, headers, requestBytes)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
+}
+
 func Fetch(client *http.Client, method, endpoint string, headers map[string]string) ([]byte, error) {
-	req, err := http.NewRequest(method, endpoint, nil)
+	return FetchWithBody(client, method, endpoint, headers, nil)
+}
+
+func FetchWithBody(client *http.Client, method, endpoint string, headers map[string]string, requestBytes []byte) ([]byte, error) {
+	var requestBody io.Reader
+	if requestBytes != nil {
+		idaaslog.Unsafe.PrintfLn("Fetch with body: %s %s %v %s", method, endpoint, headers, string(requestBytes))
+		requestBody = bytes.NewBuffer(requestBytes)
+	} else {
+		requestBody = nil
+	}
+	req, err := http.NewRequest(method, endpoint, requestBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "new request: "+endpoint)
 	}
@@ -100,6 +124,7 @@ func Fetch(client *http.Client, method, endpoint string, headers map[string]stri
 		return nil, errors.Wrapf(err, "do %s request: %s", method, endpoint)
 	}
 	defer resp.Body.Close()
+	logHttpResponse(resp)
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrapf(err, "read response body: %s", endpoint)
@@ -157,12 +182,52 @@ func loadRootCertificates(caFile string) (*x509.CertPool, error) {
 	return caCertPool, nil
 }
 
-func getUserAgent() string {
+func GetUserAgent() string {
 	userAgent := os.Getenv(constants.EnvUserAgent)
-	idaasV2VersionPart := fmt.Sprintf("AlibabaCloudIDaaS/2.0 AlibabaCloudIDaaSCli/%s", constants.AlibabaCloudIdaasCliVersion)
+	idaasV2VersionPart := fmt.Sprintf("AlibabaCloudIDaaS/2.0 AlibabaCloudIDaaSCli/%s", constants.Version)
 	if userAgent != "" {
 		return userAgent + " " + idaasV2VersionPart
 	}
-	return fmt.Sprintf("%s/%s %s",
-		runtime.GOOS, runtime.GOARCH, idaasV2VersionPart)
+	deviceId := buildDeviceId()
+	deviceUid := buildDeviceUserId(deviceId)
+	return fmt.Sprintf("%s/%s %s%s%s%s",
+		runtime.GOOS, runtime.GOARCH, idaasV2VersionPart, buildFeatures(), deviceId, deviceUid)
+}
+
+func buildFeatures() string {
+	featureStrings := features.GetEnabledFeatures()
+	if len(featureStrings) > 0 {
+		return " WithFeatures/(" + strings.Join(featureStrings, ";") + ")"
+	}
+	return ""
+}
+
+func buildDeviceId() string {
+	mac, err := GetMacAddress()
+	if err == nil {
+		return " DeviceID/did_" + Sha256ToBase32(mac+"/device_id_static_salt")
+	}
+	return ""
+}
+
+func buildDeviceUserId(deviceId string) string {
+	currentUser, errUser := user.Current()
+	if deviceId != "" && errUser == nil && currentUser != nil {
+		return " DeviceUID/duid_" + Sha256ToBase32(currentUser.Username+"@"+deviceId)
+	}
+	return ""
+}
+
+func logHttpResponse(resp *http.Response) {
+	if resp != nil {
+		idaasRequestId := resp.Header.Get("x-idaas-request-id")
+		if idaasRequestId != "" {
+			idaaslog.Debug.PrintfLn("Request ID: %s", idaasRequestId)
+			return
+		}
+		acsRequestId := resp.Header.Get("x-acs-request-id")
+		if acsRequestId != "" {
+			idaaslog.Debug.PrintfLn("Request ID: %s", acsRequestId)
+		}
+	}
 }

@@ -12,7 +12,7 @@ var (
 )
 
 const (
-	AlibabaCloudIdaasCliVersion = "0.1.0-preview12"
+	AlibabaCloudIdaasCliVersion = "0.2.0-beta"
 
 	DefaultAudienceAlibabaCloudIdaas = "alibaba-cloud-idaas-v2"
 
@@ -53,6 +53,10 @@ const (
 
 	alibabaCloudIdaasConfigFile = "alibaba-cloud-idaas.json"
 	idaasCliConfigFile          = "idaas-cli.json"
+)
+
+var (
+	Version string = AlibabaCloudIdaasCliVersion
 )
 
 func getConfigRootDir() string {

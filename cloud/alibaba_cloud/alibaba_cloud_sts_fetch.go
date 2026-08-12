@@ -13,6 +13,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idp"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
 )
@@ -39,6 +40,9 @@ func FetchStsWithOidcConfig(profile string, alibabaCloudStsConfig *config.Alibab
 	if alibabaCloudStsConfig.OidcTokenProvider == nil {
 		return nil, errors.New("OidcTokenProvider is required")
 	}
+	// Keyless STS presents the OIDC token to cloud AssumeRoleWithOIDC, which requires an id_token
+	// on the device_code path. Set it explicitly so behavior is independent of the global default.
+	alibabaCloudStsConfig.OidcTokenProvider.TokenType = oidc.TokenIdToken
 	stsEndpoint := alibabaCloudStsConfig.StsEndpoint
 	if stsEndpoint == "" {
 		if alibabaCloudStsConfig.Region == "" {

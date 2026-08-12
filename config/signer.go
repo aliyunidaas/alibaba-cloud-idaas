@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewExJwtSignerFromConfig(conf *ExSingerConfig) (*signer.ExJwtSigner, error) {
+func NewExJwtSignerFromConfig(conf *ExSignerConfig) (*signer.ExJwtSigner, error) {
 	if conf == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -64,7 +64,7 @@ func NewExJwtSignerFromConfig(conf *ExSingerConfig) (*signer.ExJwtSigner, error)
 	return exJwtSigner, nil
 }
 
-func NewKeyFileFromConfig(conf *ExSingerKeyFileConfig) (*key_file.KeyFileSigner, error) {
+func NewKeyFileFromConfig(conf *ExSignerKeyFileConfig) (*key_file.KeyFileSigner, error) {
 	return key_file.NewKeyFileSigner(conf.Key, conf.File, conf.Password)
 }
 

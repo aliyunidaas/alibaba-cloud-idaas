@@ -6,13 +6,29 @@ import (
 	"github.com/pkg/errors"
 )
 
-func buildFetchTokenCommonOptions(credentialConfig *config.OidcTokenProviderClientCredentialsConfig) *oidc.FetchTokenCommonOptions {
-	return &oidc.FetchTokenCommonOptions{
+func buildFetchTokenCommonOptions(credentialConfig *config.OidcTokenProviderClientCredentialsConfig, options *oidc.OidcCommonOptions) *oidc.FetchTokenCommonOptions {
+	tokenCommonsOptions := &oidc.FetchTokenCommonOptions{
 		TokenEndpoint:                      credentialConfig.TokenEndpoint,
 		ClientId:                           credentialConfig.ClientId,
 		GrantType:                          oidc.GrantTypeClientCredentials,
 		Scope:                              credentialConfig.Scope,
 		ApplicationFederatedCredentialName: credentialConfig.ApplicationFederatedCredentialName,
+	}
+	updateTokenCommonOptions(tokenCommonsOptions, options)
+	return tokenCommonsOptions
+}
+
+func updateTokenCommonOptions(tokenCommonsOptions *oidc.FetchTokenCommonOptions, options *oidc.OidcCommonOptions) {
+	if options != nil {
+		if options.GrantType != "" {
+			tokenCommonsOptions.GrantType = options.GrantType
+		}
+		if options.Scope != "" {
+			tokenCommonsOptions.Scope = options.Scope
+		}
+		tokenCommonsOptions.SubjectTokenType = options.SubjectTokenType
+		tokenCommonsOptions.SubjectToken = options.SubjectToken
+		tokenCommonsOptions.RequestedTokenType = options.RequestedTokenType
 	}
 }
 

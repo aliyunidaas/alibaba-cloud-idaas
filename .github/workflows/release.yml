@@ -32,16 +32,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.0'
+          go-version: '1.25.0'
       - name: Build
         run: |
           TAG=${{ github.ref_name }}
           VERSION=${TAG#v}
-          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/commands/version.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/constants.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
           tar zcvf out/alibaba-cloud-idaas-macosx-${VERSION}-amd64.tgz -C out alibaba-cloud-idaas
           bash tools/upload_asset.sh ${VERSION} out/alibaba-cloud-idaas-macosx-${VERSION}-amd64.tgz
           cp out/alibaba-cloud-idaas out/alibaba-cloud-idaas.amd64
-          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/commands/version.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/constants.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
           tar zcvf out/alibaba-cloud-idaas-macosx-${VERSION}-arm64.tgz -C out alibaba-cloud-idaas
           bash tools/upload_asset.sh ${VERSION} out/alibaba-cloud-idaas-macosx-${VERSION}-arm64.tgz
           cp out/alibaba-cloud-idaas out/alibaba-cloud-idaas.arm64
@@ -62,17 +62,17 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.0'
+          go-version: '1.25.0'
       - name: Build
         run: |
           TAG=${{ github.ref_name }}
           VERSION=${TAG#v}
           # build for Linux amd64
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/commands/version.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/constants.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
           tar zcvf out/alibaba-cloud-idaas-linux-${VERSION}-amd64.tgz -C out alibaba-cloud-idaas
           bash tools/upload_asset.sh ${VERSION} out/alibaba-cloud-idaas-linux-${VERSION}-amd64.tgz
           # build for Linux arm64
-          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/commands/version.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/constants.Version=${VERSION}'" -o out/alibaba-cloud-idaas main.go
           tar zcvf out/alibaba-cloud-idaas-linux-${VERSION}-arm64.tgz -C out alibaba-cloud-idaas
           bash tools/upload_asset.sh ${VERSION} out/alibaba-cloud-idaas-linux-${VERSION}-arm64.tgz
   build_for_windows:
@@ -89,7 +89,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.0'
+          go-version: '1.25.0'
       - name: Build
         run: |
           $tag = "${{ github.ref_name }}"
@@ -97,7 +97,7 @@ jobs:
           $env:GOOS = "windows"
           $env:GOARCH = "amd64"
           $env:CGO_ENABLED = "0"
-          go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/commands/version.Version=${version}'" -o ./out/alibaba-cloud-idaas.exe main.go
+          go build -tags disable_pkcs11,disable_yubikey_piv -ldflags "-X 'github.com/aliyunidaas/alibaba-cloud-idaas/constants.Version=${version}'" -o ./out/alibaba-cloud-idaas.exe main.go
           Compress-Archive -Path ./out/alibaba-cloud-idaas.exe -DestinationPath ./out/alibaba-cloud-idaas-windows-${version}-amd64.zip
           bash ./tools/upload_asset.sh ${version} ./out/alibaba-cloud-idaas-windows-${version}-amd64.zip
   finish_release:

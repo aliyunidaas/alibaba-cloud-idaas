@@ -72,26 +72,26 @@ func printClientAssertionSignerPublicKey(cloudStsConfig *config.CloudStsConfig) 
 		oidcTokenProviderClientCredentials := oidcTokenProvider.OidcTokenProviderClientCredentials
 		if oidcTokenProviderClientCredentials != nil {
 			// client assertion signer
-			if oidcTokenProviderClientCredentials.ClientAssertionSinger != nil {
-				return printExSingerPublicKey(oidcTokenProviderClientCredentials.ClientAssertionSinger)
+			if clientAssertionSigner := oidcTokenProviderClientCredentials.GetClientAssertionSigner(); clientAssertionSigner != nil {
+				return printExSignerPublicKey(clientAssertionSigner)
 			}
 			// client assertion private CA signer
 			clientAssertionPrivateCaConfig := oidcTokenProviderClientCredentials.ClientAssertionPrivateCaConfig
 			if clientAssertionPrivateCaConfig != nil && clientAssertionPrivateCaConfig.CertificateKeySigner != nil {
-				return printExSingerPublicKey(clientAssertionPrivateCaConfig.CertificateKeySigner)
+				return printExSignerPublicKey(clientAssertionPrivateCaConfig.CertificateKeySigner)
 			}
 		}
 	}
 	return fmt.Errorf("ext signer not found")
 }
 
-func printExSingerPublicKey(exSingerConfig *config.ExSingerConfig) error {
-	extJwtSigner, err := config.NewExJwtSignerFromConfig(exSingerConfig)
+func printExSignerPublicKey(exSignerConfig *config.ExSignerConfig) error {
+	extJwtSigner, err := config.NewExJwtSignerFromConfig(exSignerConfig)
 	if err != nil {
 		return err
 	}
-	extSinger := extJwtSigner.GetExtSinger()
-	publicKey, err := extSinger.Public()
+	extSigner := extJwtSigner.GetExtSigner()
+	publicKey, err := extSigner.Public()
 	if err != nil {
 		return err
 	}

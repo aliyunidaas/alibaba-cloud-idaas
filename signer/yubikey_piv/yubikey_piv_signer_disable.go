@@ -11,10 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func YubiKeyPivSingerEnabled() bool {
-	return false
-}
-
 type YubiKeyPivSigner struct {
 }
 

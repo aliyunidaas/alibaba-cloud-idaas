@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
@@ -16,7 +17,7 @@ const (
 
 type CloudCredentialConfig struct {
 	Version        string                     `json:"version"` // current version always ("1" - Version1)
-	CurrentProfile string                     `json:"current_profile"`
+	CurrentProfile string                     `json:"current_profile,omitempty"`
 	Profile        map[string]*CloudStsConfig `json:"profile"` // required
 }
 
@@ -69,10 +70,12 @@ func TryParseProfileFromInput(profile string) (string, *CloudStsConfig) {
 		tempProfile := fmt.Sprintf("temp-%s", utils.Sha256ToHex(profile))
 		var cloudStsConfig CloudStsConfig
 		if json.Unmarshal([]byte(profile), &cloudStsConfig) == nil {
+			cloudStsConfig.WarnDeprecatedFields(tempProfile)
 			return tempProfile, &cloudStsConfig
 		}
 		if profileDebase64, err := base64.StdEncoding.DecodeString(profile); err == nil {
 			if json.Unmarshal(profileDebase64, &cloudStsConfig) == nil {
+				cloudStsConfig.WarnDeprecatedFields(tempProfile)
 				return tempProfile, &cloudStsConfig
 			}
 		}
@@ -81,25 +84,73 @@ func TryParseProfileFromInput(profile string) (string, *CloudStsConfig) {
 }
 
 type CloudStsConfig struct {
-	AlibabaCloud *AlibabaCloudStsConfig   `json:"alibaba_cloud_sts"`   // optional, AlibabaCloud, Aws, OidcToken or CloudAccount one required
-	Aws          *AwsCloudStsConfig       `json:"aws_sts"`             // optional, see AlibabaCloud
-	OidcToken    *OidcTokenProviderConfig `json:"oidc_token"`          // optional, see AlibabaCloud
-	CloudAccount *CloudAccountTokenConfig `json:"cloud_account_token"` // optional, see AlibabaCloud
-	Agent        *AgentConfig             `json:"agent"`               // optional, see AlibabaCloud
-	Environments []string                 `json:"environments"`        // optional, environments for execute
-	Comment      string                   `json:"comment"`             // optional
+	AlibabaCloud *AlibabaCloudStsConfig   `json:"alibaba_cloud_sts,omitempty"`   // optional, AlibabaCloud, Aws, OidcToken or CloudAccount one required
+	Aws          *AwsCloudStsConfig       `json:"aws_sts,omitempty"`             // optional, see AlibabaCloud
+	OidcToken    *OidcTokenProviderConfig `json:"oidc_token,omitempty"`          // optional, see AlibabaCloud
+	CloudAccount *CloudAccountTokenConfig `json:"cloud_account_token,omitempty"` // optional, see AlibabaCloud
+	Credential   *CredentialConfig        `json:"credential,omitempty"`          // optional, static credential via Developer API
+	Agent        *AgentConfig             `json:"agent,omitempty"`               // optional, see AlibabaCloud
+	Environments []string                 `json:"environments,omitempty"`        // optional, environments for execute
+	Comment      string                   `json:"comment,omitempty"`             // optional
+}
+
+// OidcTokenProviders collects every OIDC token provider referenced by this profile,
+// regardless of which cloud/credential provider owns it.
+func (c *CloudStsConfig) OidcTokenProviders() []*OidcTokenProviderConfig {
+	if c == nil {
+		return nil
+	}
+	candidates := []*OidcTokenProviderConfig{c.OidcToken}
+	if c.AlibabaCloud != nil {
+		candidates = append(candidates, c.AlibabaCloud.OidcTokenProvider)
+	}
+	if c.Aws != nil {
+		candidates = append(candidates, c.Aws.OidcTokenProvider)
+	}
+	if c.CloudAccount != nil {
+		candidates = append(candidates, c.CloudAccount.AccessTokenProvider)
+	}
+	if c.Credential != nil {
+		candidates = append(candidates, c.Credential.AccessTokenProvider)
+	}
+	if c.Agent != nil {
+		candidates = append(candidates, c.Agent.AccessTokenProvider)
+	}
+
+	var providers []*OidcTokenProviderConfig
+	for _, provider := range candidates {
+		if provider != nil {
+			providers = append(providers, provider)
+		}
+	}
+	return providers
+}
+
+// WarnDeprecatedFields logs the deprecated config keys used by this profile. The values
+// still take effect, but users should migrate to the current key names.
+func (c *CloudStsConfig) WarnDeprecatedFields(profile string) {
+	for _, provider := range c.OidcTokenProviders() {
+		clientCredentials := provider.OidcTokenProviderClientCredentials
+		if clientCredentials == nil {
+			continue
+		}
+		if clientCredentials.ClientAssertionSinger != nil && clientCredentials.ClientAssertionSigner == nil {
+			idaaslog.Warn.PrintfLn("Profile %s uses deprecated config key `client_assertion_singer`, "+
+				"please rename it to `client_assertion_signer`", profile)
+		}
+	}
 }
 
 type CloudAccountTokenConfig struct {
 	// Endpoint and region: https://api.aliyun.com/product/Eiam-developerapi
 	// Endpoint e.g. https://eiam-developerapi.cn-hangzhou.aliyuncs.com/v2/idaas_***/cloudAccountRoles/_/actions/obtainAccessCredential
-	CloudAccountRegion         string                   `json:"cloud_account_region"`
-	CloudAccountInstanceId     string                   `json:"cloud_account_instance_id"` // use InstanceId
-	CloudAccountEndpoint       string                   `json:"cloud_account_endpoint"`    // use DeveloperApiEndpoint
-	InstanceId                 string                   `json:"instance_id"`               // recommend
-	DeveloperApiEndpoint       string                   `json:"developer_api_endpoint"`    // recommend
-	CloudAccountRoleExternalId string                   `json:"cloud_account_role_external_id"`
-	AccessTokenProvider        *OidcTokenProviderConfig `json:"access_token_provider"`
+	CloudAccountRegion         string                   `json:"cloud_account_region,omitempty"`      // Deprecated: use developer_api_endpoint (region is embedded in the host)
+	CloudAccountInstanceId     string                   `json:"cloud_account_instance_id,omitempty"` // Deprecated: use instance_id
+	CloudAccountEndpoint       string                   `json:"cloud_account_endpoint,omitempty"`    // Deprecated: use developer_api_endpoint
+	InstanceId                 string                   `json:"instance_id,omitempty"`               // recommend
+	DeveloperApiEndpoint       string                   `json:"developer_api_endpoint,omitempty"`    // recommend
+	CloudAccountRoleExternalId string                   `json:"cloud_account_role_external_id,omitempty"`
+	AccessTokenProvider        *OidcTokenProviderConfig `json:"access_token_provider,omitempty"`
 }
 
 func (c *CloudAccountTokenConfig) GetInstanceId() string {
@@ -130,8 +181,8 @@ func (c *CloudAccountTokenConfig) GetCloudAccountEndpoint() (string, error) {
 		return c.CloudAccountEndpoint, nil
 	}
 	instanceId := c.GetInstanceId()
-	if c.DeveloperApiEndpoint != "" && instanceId != "" {
-		return fmt.Sprintf("%s/v2/%s/cloudAccountRoles/_/actions/obtainAccessCredential", utils.NormalizeDeveloperApiEndpoint(c.DeveloperApiEndpoint), instanceId), nil
+	if c.DeveloperApiEndpoint != "" {
+		return buildDeveloperApiUrl(c.DeveloperApiEndpoint, instanceId, "/cloudAccountRoles/_/actions/obtainAccessCredential"), nil
 	}
 	if c.CloudAccountRegion == "" || instanceId == "" {
 		return "", errors.New("cloud account token config missing cloud account region or instance id")
@@ -140,47 +191,112 @@ func (c *CloudAccountTokenConfig) GetCloudAccountEndpoint() (string, error) {
 }
 
 type AgentConfig struct {
-	InstanceId           string                   `json:"instance_id"`
-	DeveloperApiEndpoint string                   `json:"developer_api_endpoint"`
-	AccessTokenProvider  *OidcTokenProviderConfig `json:"access_token_provider"`
+	InstanceId           string                   `json:"instance_id,omitempty"`
+	DeveloperApiEndpoint string                   `json:"developer_api_endpoint,omitempty"`
+	AccessTokenProvider  *OidcTokenProviderConfig `json:"access_token_provider,omitempty"`
+}
+
+func (c *AgentConfig) CreateUserExclusiveCredentialEndpoint() (string, error) {
+	if c == nil {
+		return "", errors.New("nil agent config")
+	}
+	if !checkEndpointAndInstanceId(c.DeveloperApiEndpoint, c.InstanceId) {
+		return "", errors.New("agent config missing instance_id or developer_api_endpoint")
+	}
+	return buildDeveloperApiUrl(c.DeveloperApiEndpoint, c.InstanceId, "/credentials/_/actions/createUserExclusive"), nil
+}
+
+func (c *AgentConfig) DecryptUserExclusiveCredentialEndpoint() (string, error) {
+	if c == nil {
+		return "", errors.New("nil agent config")
+	}
+	if !checkEndpointAndInstanceId(c.DeveloperApiEndpoint, c.InstanceId) {
+		return "", errors.New("agent config missing instance_id or developer_api_endpoint")
+	}
+	return buildDeveloperApiUrl(c.DeveloperApiEndpoint, c.InstanceId, "/credentials/_/actions/decryptUserExclusiveCredentialCiphertext"), nil
 }
 
 func (c *AgentConfig) GetCredentialEndpoint() (string, error) {
 	if c == nil {
 		return "", errors.New("nil agent config")
 	}
-	if c.DeveloperApiEndpoint == "" || c.InstanceId == "" {
+	if !checkEndpointAndInstanceId(c.DeveloperApiEndpoint, c.InstanceId) {
 		return "", errors.New("agent config missing instance_id or developer_api_endpoint")
 	}
-	// curl -X GET "https://eiam-developerapi.cn-hangzhou.aliyuncs.com/v2/idaas_wns****/credentials/_/actions/obtain?credentialIdentifier=cangyu_test" \
-	//	-H "Accept:application/json" \
-	//	-H "Authorization: Bearer eyJraW****"
-	return fmt.Sprintf("%s/v2/%s/credentials/_/actions/obtain", utils.NormalizeDeveloperApiEndpoint(c.DeveloperApiEndpoint), c.InstanceId), nil
+	return buildDeveloperApiUrl(c.DeveloperApiEndpoint, c.InstanceId, "/credentials/_/actions/obtain"), nil
+}
+
+func (c *AgentConfig) Clone() (*AgentConfig, error) {
+	if c == nil {
+		return nil, nil
+	}
+	configJson, err := json.Marshal(c)
+	if err != nil {
+		return nil, errors.Wrap(err, "error cloning AgentConfig")
+	}
+	var clonedConfig = &AgentConfig{}
+	err = json.Unmarshal(configJson, &clonedConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "error cloning AgentConfig")
+	}
+	return clonedConfig, nil
+}
+
+// DeveloperApiConfig is the shared base for Developer-API-backed providers:
+// instance_id + developer_api_endpoint + access_token_provider. New providers embed it.
+// (cloud_account_token / agent keep their own fields for backward compatibility.)
+type DeveloperApiConfig struct {
+	InstanceId           string                   `json:"instance_id,omitempty"`
+	DeveloperApiEndpoint string                   `json:"developer_api_endpoint,omitempty"`
+	AccessTokenProvider  *OidcTokenProviderConfig `json:"access_token_provider,omitempty"`
+}
+
+func (c *DeveloperApiConfig) BuildDeveloperApiUrl(path string) (string, error) {
+	if c == nil {
+		return "", errors.New("nil developer api config")
+	}
+	if !checkEndpointAndInstanceId(c.DeveloperApiEndpoint, c.InstanceId) {
+		return "", errors.New("missing instance_id or developer_api_endpoint")
+	}
+	return buildDeveloperApiUrl(c.DeveloperApiEndpoint, c.InstanceId, path), nil
+}
+
+// CredentialConfig fetches a static credential via the Developer API.
+type CredentialConfig struct {
+	DeveloperApiConfig
+	CredentialIdentifier string `json:"credential_identifier,omitempty"` // credential name or id
+}
+
+func (c *CredentialConfig) GetObtainCredentialEndpoint() (string, error) {
+	if c == nil {
+		return "", errors.New("nil credential config")
+	}
+	return c.BuildDeveloperApiUrl("/credentials/_/actions/obtain")
 }
 
 type AlibabaCloudStsConfig struct {
-	Region            string                   `json:"region"`
-	StsEndpoint       string                   `json:"sts_endpoint"`        // required
-	OidcProviderArn   string                   `json:"oidc_provider_arn"`   // required
-	RoleArn           string                   `json:"role_arn"`            // required
-	DurationSeconds   int64                    `json:"duration_seconds"`    // optional
-	RoleSessionName   string                   `json:"role_session_name"`   // optional, generate role session name when absent
-	OidcTokenProvider *OidcTokenProviderConfig `json:"oidc_token_provider"` // required at this moment
+	Region            string                   `json:"region,omitempty"`
+	StsEndpoint       string                   `json:"sts_endpoint,omitempty"`        // required
+	OidcProviderArn   string                   `json:"oidc_provider_arn,omitempty"`   // required
+	RoleArn           string                   `json:"role_arn,omitempty"`            // required
+	DurationSeconds   int64                    `json:"duration_seconds,omitempty"`    // optional
+	RoleSessionName   string                   `json:"role_session_name,omitempty"`   // optional, generate role session name when absent
+	OidcTokenProvider *OidcTokenProviderConfig `json:"oidc_token_provider,omitempty"` // required at this moment
 }
 
 type AwsCloudStsConfig struct {
-	Region            string                   `json:"region"`              // required
-	RoleArn           string                   `json:"role_arn"`            // required
-	DurationSeconds   int32                    `json:"duration_seconds"`    // optional
-	RoleSessionName   string                   `json:"role_session_name"`   // optional, generate role session name when absent
-	OidcTokenProvider *OidcTokenProviderConfig `json:"oidc_token_provider"` // required at this moment
+	Region            string                   `json:"region,omitempty"`              // required
+	RoleArn           string                   `json:"role_arn,omitempty"`            // required
+	DurationSeconds   int32                    `json:"duration_seconds,omitempty"`    // optional
+	RoleSessionName   string                   `json:"role_session_name,omitempty"`   // optional, generate role session name when absent
+	OidcTokenProvider *OidcTokenProviderConfig `json:"oidc_token_provider,omitempty"` // required at this moment
 }
 
 type OidcTokenProviderConfig struct {
-	TokenType                          string                                    `json:"token_type"`         // for device_code, id_token[default], access_token
-	OidcTokenProviderClientCredentials *OidcTokenProviderClientCredentialsConfig `json:"client_credentials"` // optional *
-	OidcTokenProviderDeviceCode        *OidcTokenProviderDeviceCodeConfig        `json:"device_code"`        // optional *
-	OpenApi                            *OpenApiConfig                            `json:"open_api"`           // optional *
+	TokenType                          string                                    `json:"token_type,omitempty"`         // for device_code: access_token[default], id_token
+	OidcTokenProviderClientCredentials *OidcTokenProviderClientCredentialsConfig `json:"client_credentials,omitempty"` // optional *
+	OidcTokenProviderDeviceCode        *OidcTokenProviderDeviceCodeConfig        `json:"device_code,omitempty"`        // optional *
+	OpenApi                            *OpenApiConfig                            `json:"open_api,omitempty"`           // optional *
 	// * only requires one
 }
 
@@ -210,26 +326,40 @@ func (c *OidcTokenProviderConfig) Marshal() string {
 }
 
 type OidcTokenProviderClientCredentialsConfig struct {
-	TokenEndpoint                      string           `json:"token_endpoint"`                        // required
-	ClientId                           string           `json:"client_id"`                             // required
-	Scope                              string           `json:"scope"`                                 // optional
-	ApplicationFederatedCredentialName string           `json:"application_federated_credential_name"` // optional
-	ClientSecret                       string           `json:"client_secret"`                         // optional *
-	ClientAssertionSinger              *ExSingerConfig  `json:"client_assertion_singer"`               // optional *
-	ClientAssertionPkcs7Config         *Pkcs7Config     `json:"client_assertion_pkcs7"`                // optional *
-	ClientAssertionPrivateCaConfig     *PrivateCaConfig `json:"client_assertion_private_ca"`           // optional *
-	ClientAssertionOidcTokenConfig     *OidcTokenConfig `json:"client_assertion_oidc_token"`           // optional *
+	TokenEndpoint                      string           `json:"token_endpoint,omitempty"`                        // required
+	ClientId                           string           `json:"client_id,omitempty"`                             // required
+	Scope                              string           `json:"scope,omitempty"`                                 // optional
+	ApplicationFederatedCredentialName string           `json:"application_federated_credential_name,omitempty"` // optional
+	ClientSecret                       string           `json:"client_secret,omitempty"`                         // optional *
+	ClientAssertionSigner              *ExSignerConfig  `json:"client_assertion_signer,omitempty"`               // optional *
+	ClientAssertionSinger              *ExSignerConfig  `json:"client_assertion_singer,omitempty"`               // Deprecated: typo, use client_assertion_signer
+	ClientAssertionPkcs7Config         *Pkcs7Config     `json:"client_assertion_pkcs7,omitempty"`                // optional *
+	ClientAssertionPrivateCaConfig     *PrivateCaConfig `json:"client_assertion_private_ca,omitempty"`           // optional *
+	ClientAssertionOidcTokenConfig     *OidcTokenConfig `json:"client_assertion_oidc_token,omitempty"`           // optional *
 	// * requires one
 }
 
+// GetClientAssertionSigner returns the client assertion signer config, falling back to the
+// deprecated misspelled `client_assertion_singer` field so that configs written for
+// v0.1.x keep working.
+func (c *OidcTokenProviderClientCredentialsConfig) GetClientAssertionSigner() *ExSignerConfig {
+	if c == nil {
+		return nil
+	}
+	if c.ClientAssertionSigner != nil {
+		return c.ClientAssertionSigner
+	}
+	return c.ClientAssertionSinger
+}
+
 type OidcTokenProviderDeviceCodeConfig struct {
-	Issuer       string `json:"issuer"`        // required
-	ClientId     string `json:"client_id"`     // required
-	Scope        string `json:"scope"`         // optional, default openid
-	ClientSecret string `json:"client_secret"` // optional, when public client
-	AutoOpenUrl  bool   `json:"auto_open_url"` // optional, auto open in browser, use in local device
-	ShowQrCode   bool   `json:"show_qr_code"`  // optional, show QR code, use in server
-	SmallQrCode  bool   `json:"small_qr_code"` // optional, show small QR code, may cause compatible issue
+	Issuer       string `json:"issuer,omitempty"`        // required
+	ClientId     string `json:"client_id,omitempty"`     // required
+	Scope        string `json:"scope,omitempty"`         // optional, default openid
+	ClientSecret string `json:"client_secret,omitempty"` // optional, when public client
+	AutoOpenUrl  bool   `json:"auto_open_url,omitempty"` // optional, auto open in browser, use in local device
+	ShowQrCode   bool   `json:"show_qr_code,omitempty"`  // optional, show QR code, use in server
+	SmallQrCode  bool   `json:"small_qr_code,omitempty"` // optional, show small QR code, may cause compatible issue
 }
 
 // OpenApiConfig
@@ -282,7 +412,7 @@ type PrivateCaConfig struct {
 	CertificateFile      string          `json:"certificate_file"`       // optional, certificate file @see Certificate, Certificate and CertificateFile requires one
 	CertificateChain     string          `json:"certificate_chain"`      // optional, certificate chain, base64 or PEM, separator ","
 	CertificateChainFile string          `json:"certificate_chain_file"` // optional, certificate chain file @see CertificateChain
-	CertificateKeySigner *ExSingerConfig `json:"certificate_key_signer"` // optional, when private stored in external
+	CertificateKeySigner *ExSignerConfig `json:"certificate_key_signer"` // optional, when private stored in external
 }
 
 // OidcTokenConfig
@@ -296,13 +426,13 @@ type OidcTokenConfig struct {
 	OidcTokenFile       string `json:"oidc_token_file"`        // optional, only for custom, OidcToken and OidcTokenFile requires one
 }
 
-type ExSingerConfig struct {
+type ExSignerConfig struct {
 	KeyID           string                         `json:"key_id"`           // optional, PCA do not requires key_id
 	Algorithm       string                         `json:"algorithm"`        // required, RS256, RS384, RS512, ES256, ES384, ES512
 	Pkcs11          *ExSignerPkcs11Config          `json:"pkcs11"`           // optional *
 	YubikeyPiv      *ExSignerYubikeyPivConfig      `json:"yubikey_piv"`      // optional *
 	ExternalCommand *ExSignerExternalCommandConfig `json:"external_command"` // optional *
-	KeyFile         *ExSingerKeyFileConfig         `json:"key_file"`         // optional *
+	KeyFile         *ExSignerKeyFileConfig         `json:"key_file"`         // optional *
 	// * pkcs11, yubikey_piv, external_command, key_file requires one
 }
 
@@ -324,9 +454,30 @@ type ExSignerExternalCommandConfig struct {
 	Parameter string `json:"parameter"` // required
 }
 
-type ExSingerKeyFileConfig struct {
+type ExSignerKeyFileConfig struct {
 	Key      string `json:"key"`      // optional *
 	File     string `json:"file"`     // optional *
 	Password string `json:"password"` // optional, for PKCS#8 encrypted private key
 	// * key, file requires one
+}
+
+func checkEndpointAndInstanceId(endpoint string, instanceId string) bool {
+	if isInstanceDomain(endpoint) {
+		return true
+	}
+	return instanceId != ""
+}
+
+func buildDeveloperApiUrl(endpoint, instanceId, path string) string {
+	if isInstanceDomain(endpoint) {
+		// https://example.aliyunidaas.com/api/v2/resources/operation
+		return fmt.Sprintf("%s/api/v2%s", utils.NormalizeDeveloperApiEndpoint(endpoint), path)
+	}
+	// https://eiam-developerapi.region-id.aliyuncs.com/v2/instance-id/resources/operation
+	return fmt.Sprintf("%s/v2/%s%s", utils.NormalizeDeveloperApiEndpoint(endpoint), instanceId, path)
+}
+
+func isInstanceDomain(endpoint string) bool {
+	lowerEndpoint := strings.ToLower(endpoint)
+	return strings.Contains(lowerEndpoint, ".aliyunidaas.com") || strings.Contains(lowerEndpoint, ".cloud-idaas.com")
 }

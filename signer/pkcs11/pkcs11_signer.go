@@ -21,10 +21,6 @@ const (
 	MacOsOpenscLibrary  = "/Library/OpenSC/lib/opensc-pkcs11.so"
 )
 
-func Pkcs11SingerEnabled() bool {
-	return true
-}
-
 type Pkcs11Signer struct {
 	config   *crypto11.Config
 	keyLabel string

@@ -46,6 +46,10 @@ func (s *StdErrOut) Fprintf(format string, args ...interface{}) {
 	_, _ = fmt.Fprintf(s.stdFile, format, args...)
 }
 
+func (s *StdErrOut) Printf(format string, args ...interface{}) {
+	_, _ = fmt.Fprintf(s.stdFile, format, args...)
+}
+
 func Bold(str string, color bool) string {
 	return WithColor(str, TermBold, color)
 }

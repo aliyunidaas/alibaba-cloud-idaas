@@ -11,10 +11,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func Pkcs11SingerEnabled() bool {
-	return false
-}
-
 type Pkcs11Signer struct {
 }
 

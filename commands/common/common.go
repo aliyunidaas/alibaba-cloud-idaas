@@ -10,6 +10,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/alibaba_cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/aws"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/cloud_account"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/credential"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 )
@@ -30,6 +31,10 @@ func ShowToken(sts any, oidcTokenType oidc.FetchOidcTokenType, stdout, color boo
 	cloudAccountToken, ok := sts.(*cloud_account.CloudAccountToken)
 	if ok {
 		return showCloudAccountToken(cloudAccountToken, stdout, color)
+	}
+	cred, ok := sts.(*credential.Credential)
+	if ok {
+		return showCredential(cred, stdout, color)
 	}
 
 	return fmt.Errorf("unknown cloud STS token type")
@@ -101,6 +106,26 @@ func showCloudAccountToken(cloudAccountToken *cloud_account.CloudAccountToken, s
 				_ = showStsToken(stsToken, stdout, color)
 			}
 		}
+		if cloudAccountToken.IsAwsToken() {
+			stsToken := cloud.ConvertCloudAccountTokenAwsStsTokenToAwsStsToken(credential.AwsStsToken)
+			if stsToken != nil {
+				_ = showAwsStsToken(stsToken, stdout, color)
+			}
+		}
+	}
+	return nil
+}
+
+func showCredential(cred *credential.Credential, stdout, color bool) error {
+	printRowWidth2("Credential Identifier", cred.CredentialIdentifier, stdout, color)
+	printRowWidth2("Credential Name", cred.CredentialName, stdout, color)
+	printRowWidth2("Credential Type", cred.CredentialType, stdout, color)
+	if cred.CredentialContent.ApiKeyContent != nil {
+		printRowWidth2("API Key", cred.CredentialContent.ApiKeyContent.ApiKey, stdout, color)
+	}
+	if cred.CredentialContent.OauthClientContent != nil {
+		printRowWidth2("OAuth Client ID", cred.CredentialContent.OauthClientContent.ClientId, stdout, color)
+		printRowWidth2("OAuth Client Secret", cred.CredentialContent.OauthClientContent.ClientSecret, stdout, color)
 	}
 	return nil
 }

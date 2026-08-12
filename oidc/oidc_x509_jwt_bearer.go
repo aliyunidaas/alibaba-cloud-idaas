@@ -16,7 +16,7 @@ type FetchTokenX509JwtBearerOptions struct {
 }
 
 func FetchTokenX509JwtBearer(tokenEndpoint string, options *FetchTokenX509JwtBearerOptions) (*TokenResponse, *ErrorResponse, error) {
-	jwtSingerOptions := &signer.JwtSignerOptions{
+	jwtSignerOptions := &signer.JwtSignerOptions{
 		Issuer:   options.ClientId,
 		Audience: options.TokenEndpoint,
 		Subject:  options.ClientId,
@@ -24,7 +24,7 @@ func FetchTokenX509JwtBearer(tokenEndpoint string, options *FetchTokenX509JwtBea
 		AutoJti:  true,
 	}
 	utils.Stderr.Println("Ready to sign the JWT token. If required, interact with your security token to proceed.")
-	jwtToken, err := options.JwtSigner.SignJwtWithOptions(nil, jwtSingerOptions)
+	jwtToken, err := options.JwtSigner.SignJwtWithOptions(nil, jwtSignerOptions)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to fetch token from: %s", tokenEndpoint)
 	}
@@ -33,6 +33,9 @@ func FetchTokenX509JwtBearer(tokenEndpoint string, options *FetchTokenX509JwtBea
 		ClientId:                           options.ClientId,
 		GrantType:                          options.GrantType,
 		Scope:                              options.Scope,
+		SubjectTokenType:                   options.SubjectTokenType,
+		SubjectToken:                       options.SubjectToken,
+		RequestedTokenType:                 options.RequestedTokenType,
 		ClientAssertionType:                ClientAssertionTypeX509JwtBearer,
 		ClientAssertion:                    jwtToken,
 		ClientX509:                         options.ClientX509,

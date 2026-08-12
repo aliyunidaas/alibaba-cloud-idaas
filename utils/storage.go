@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -21,6 +22,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const (
@@ -182,7 +184,8 @@ func ReadCacheWithEncryptionCallback(category, key string, cacheReadWrite CacheR
 			return stringWithTime.Content, nil
 		}
 	}
-	return "", errors.Wrapf(fetchContentErr, "read cache file [%s, %s], context: %+v", category, key, options.Context)
+	idaaslog.Debug.PrintfLn("Read cache file [%s, %s] failed, context: %+v", category, key, options.Context)
+	return "", errors.Wrapf(fetchContentErr, "read cache file [%s, %s] failed", category, key)
 }
 
 func RemoveCacheFile(category, key string) error {
@@ -299,9 +302,10 @@ func getSeed2() []byte {
 }
 
 func getMacs() string {
-	idaaslog.Debug.PrintfLn("Enable encrypt with mac: %s", EnableEncryptWithMac)
+	idaaslog.Debug.PrintfLn("Enable encrypt with full mac: %t", EnableEncryptWithMac)
 	if !EnableEncryptWithMac {
-		return "static_mac"
+		// use simple mac address
+		return getSimpleMacKdf()
 	}
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -317,8 +321,24 @@ func getMacs() string {
 	}
 	slices.Sort(macs)
 	macAddress := strings.Join(macs, ",")
-	idaaslog.Unsafe.PrintfLn("Mac addresses: %s", macAddress)
-	return macAddress
+	idaaslog.Unsafe.PrintfLn("Full mac addresses: %s", macAddress)
+	return "full_mac_address:" + macAddress
+}
+
+func getSimpleMacKdf() string {
+	// simple KDF from default mac address
+	startMs := time.Now().UnixMilli()
+	macAddress, err := GetMacAddress()
+	if err != nil {
+		idaaslog.Warn.PrintfLn("Get mac address failed: %s", err)
+	}
+	idaaslog.Unsafe.PrintfLn("Simple mac address: %s", macAddress)
+	simpleKdfSalt := runtime.GOOS + "-" + runtime.GOARCH
+	kdfKey := pbkdf2.Key([]byte("simple_mac_address:"+macAddress), []byte(simpleKdfSalt), 100_0000, 32, sha256.New)
+	kdfKeyB64 := "mac_address_kdf:" + base64.StdEncoding.EncodeToString(kdfKey)
+	endMs := time.Now().UnixMilli()
+	idaaslog.Unsafe.PrintfLn("Simple mac KDF: %s, os: %s, arch: %s, cost: %d", kdfKeyB64, runtime.GOOS, runtime.GOARCH, endMs-startMs)
+	return kdfKeyB64
 }
 
 func removeCacheFile(category, key string) error {

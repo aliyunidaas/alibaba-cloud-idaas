@@ -8,6 +8,7 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/alibaba_cloud"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/aws"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/cloud_account"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/credential"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/oidc"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/pkg/errors"
@@ -118,7 +119,7 @@ func fetchToken(configFilename, profile, format, oidcField, oidcFormat, output s
 			} else if oidcFormat == "type2" {
 				stdOutput, stdOutputErr = oidcToken.ConvertToType2().Marshal()
 			} else {
-				return fmt.Errorf("unknown OIDC format " + oidcFormat)
+				return fmt.Errorf("unknown OIDC format %s", oidcFormat)
 			}
 		}
 	} else if cloudAccountToken, ok := sts.(*cloud_account.CloudAccountToken); ok {
@@ -127,9 +128,14 @@ func fetchToken(configFilename, profile, format, oidcField, oidcFormat, output s
 		} else if cloudAccountToken.IsAlibabaCloudToken() {
 			alibabaCloudSts := cloud.ConvertCloudAccountTokenAlibabaCloudStsTokenToAlibabaStsToken(cloudAccountToken.CloudAccountRoleAccessCredential.AlibabaCloudStsToken)
 			stdOutput, stdOutputErr = alibabaCloudSts.MarshalWithFormat(format)
+		} else if cloudAccountToken.IsAwsToken() {
+			awsSts := cloud.ConvertCloudAccountTokenAwsStsTokenToAwsStsToken(cloudAccountToken.CloudAccountRoleAccessCredential.AwsStsToken)
+			stdOutput, stdOutputErr = awsSts.Marshal()
 		} else {
 			stdOutput, stdOutputErr = cloudAccountToken.Marshal()
 		}
+	} else if cred, ok := sts.(*credential.Credential); ok {
+		stdOutput, stdOutputErr = cred.Marshal()
 	} else {
 		return fmt.Errorf("unknown cloud STS token type")
 	}

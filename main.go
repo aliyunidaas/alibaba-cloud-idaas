@@ -5,12 +5,19 @@ import (
 	"os"
 	"strings"
 
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/agent"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/login"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/logout"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/onboard"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/openclaw_secret"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/qr"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/serve"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/show"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/show_signer_public_key"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/start_session"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/status"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/validate_jwt"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/utils/features"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/clean_cache"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/execute"
@@ -22,8 +29,6 @@ import (
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/idaaslog"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/signer/pkcs11"
-	"github.com/aliyunidaas/alibaba-cloud-idaas/signer/yubikey_piv"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -42,6 +47,11 @@ func main() {
 func innerMain() error {
 	commands := []*cli.Command{
 		fetch_token.BuildCommand(),
+		onboard.BuildCommand(),
+		login.BuildCommand(),
+		logout.BuildCommand(),
+		status.BuildCommand(),
+		show.BuildCommand(),
 		show_token.BuildCommand(),
 		show_profile.BuildCommand(),
 		version.BuildCommand(),
@@ -53,6 +63,7 @@ func innerMain() error {
 		qr.BuildCommand(),
 		validate_jwt.BuildCommand(),
 		openclaw_secret.BuildCommand(),
+		agent.BuildCommand(),
 	}
 	if version.IsPreRelease() {
 		commands = append(commands, start_session.BuildCommand())
@@ -73,7 +84,8 @@ func innerMain() error {
 		},
 	}
 	if err := app.Run(os.Args); err != nil {
-		utils.Stderr.Fprintf("%s\n", idaaslog.DumpError(err))
+		idaaslog.Error.PrintfLn("%s", idaaslog.DumpError(err))
+		utils.Stderr.Fprintf("%s\n", err.Error())
 		os.Exit(1)
 	}
 	return nil
@@ -87,7 +99,7 @@ func printBanner() {
 		"    +#+      +#+    +:+  +#++:++#++:  +#++:++#++:  +#++:++#++ \n" +
 		"    +#+      +#+    +#+  +#+     +#+  +#+     +#+         +#+ \n" +
 		"    #+#      #+#    #+#  #+#     #+#  #+#     #+#  #+#    #+# \n" +
-		"###########  #########   ###     ###  ###     ###   ########   v" + version.GetVersion()
+		"###########  #########   ###     ###  ###     ###   ########   v" + constants.Version
 	println(logoAndVersion)
 
 	println()
@@ -115,7 +127,7 @@ func printConfigFileAndFeatures() {
 		}
 	}
 
-	fmt.Printf("Features: [%s]\n", strings.Join(getEnabledFeatures(), ", "))
+	fmt.Printf("Features: [%s]\n", strings.Join(features.GetEnabledFeatures(), ", "))
 }
 
 func printVerbose(context *cli.Context) {
@@ -126,24 +138,13 @@ func printVerbose(context *cli.Context) {
 		fmt.Printf(" - %s  User agent when send OIDC/OAuth related requests\n", padEnv(constants.EnvUserAgent))
 		fmt.Printf(" - %s  Log unsafe secure data\n", padEnv(constants.EnvUnsafeDebug))
 		fmt.Printf(" - %s  Copy log to console stderr\n", padEnv(constants.EnvUnsafeConsolePrint))
-		if pkcs11.Pkcs11SingerEnabled() {
+		if features.IsPkcs11Enabled() {
 			fmt.Printf(" - %s  PKCS#11 PIN\n", padEnv(constants.EnvPkcs11Pin))
 		}
-		if yubikey_piv.YubiKeyPivSingerEnabled() {
+		if features.IsYubikeyEnabled() {
 			fmt.Printf(" - %s  YubiKey PIV PIN\n", padEnv(constants.EnvYubiKeyPin))
 		}
 	}
-}
-
-func getEnabledFeatures() []string {
-	var features []string
-	if pkcs11.Pkcs11SingerEnabled() {
-		features = append(features, "pkcs11")
-	}
-	if yubikey_piv.YubiKeyPivSingerEnabled() {
-		features = append(features, "yubikey_piv")
-	}
-	return features
 }
 
 func padEnv(str string) string {

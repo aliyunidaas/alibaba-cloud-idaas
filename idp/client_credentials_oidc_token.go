@@ -17,14 +17,14 @@ const (
 	OidcTokenProviderCustom = "custom"
 )
 
-func FetchAccessTokenClientCredentialsOidcToken(credentialConfig *config.OidcTokenProviderClientCredentialsConfig) (*oidc.TokenResponse, error) {
+func FetchAccessTokenClientCredentialsOidcToken(credentialConfig *config.OidcTokenProviderClientCredentialsConfig, options *oidc.OidcCommonOptions) (*oidc.TokenResponse, error) {
 	tokenEndpoint := credentialConfig.TokenEndpoint
 	idToken, err := fetchOidcToken(credentialConfig)
 	if err != nil {
 		return nil, err
 	}
 	fetchTokenIdTokenBearerOptions := &oidc.FetchTokenIdTokenBearerOptions{
-		FetchTokenCommonOptions: buildFetchTokenCommonOptions(credentialConfig),
+		FetchTokenCommonOptions: buildFetchTokenCommonOptions(credentialConfig, options),
 		IdToken:                 idToken,
 	}
 	tokenResponse, errorResponse, err := oidc.FetchTokenIdTokenBearer(tokenEndpoint, fetchTokenIdTokenBearerOptions)
