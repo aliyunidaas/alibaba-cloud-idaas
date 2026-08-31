@@ -65,7 +65,7 @@ var (
 	}
 	stringFlagClientId = &cli.StringFlag{
 		Name:  "client-id",
-		Usage: "Broker client application id (passed to login, default: from discovery)",
+		Usage: "Broker client application id (passed to login, default: from profile or iap_cloud_idaas_cli)",
 	}
 	boolFlagForceNew = &cli.BoolFlag{
 		Name:    "force-new",
@@ -155,9 +155,9 @@ func runOnboard(opts *onboardOptions) error {
 		}
 	}
 	if clientId == "" {
-		clientId = common.ResolveClientId(discovery)
+		clientId = common.DefaultClientId
 	}
-	if clientId == "" || clientId == common.DefaultClientId {
+	if clientId == common.DefaultClientId {
 		utils.Stdout.Printf("      Tip: using default client-id '%s'. If login fails with 'not authorized', specify --client-id with your broker app id.\n", clientId)
 	}
 	utils.Stdout.Printf("      instance_id=%s  issuer=%s  pop=%s\n", discovery.InstanceId, issuer, pop)

@@ -273,7 +273,7 @@ Obtain a static credential (e.g. API key) managed by IDaaS via the Developer API
         "access_token_provider": {
           "device_code": {
             "issuer": "https://<instance>/api/v2/<auth-server-id>/oauth2",
-            "client_id": "iap_developer"
+            "client_id": "iap_cloud_idaas_cli"
           }
         }
       }
@@ -318,7 +318,7 @@ Subcommands:
 
 One command to onboard: given only the instance domain, `onboard` discovers the instance
 (`/.well-known/cloud-idaas-configuration` → `instance_id` / `default_authorization_server` /
-`developer_api_endpoint`), performs a device-code login (broker client defaults to `iap_developer`,
+`developer_api_endpoint`), performs a device-code login (broker client defaults to `iap_cloud_idaas_cli`,
 override with `--client-id`), lists the cloud roles the current user can assume, and generates
 `cloud_account_token` profiles (plus aliyun-cli `External` profiles) — no AK required.
 

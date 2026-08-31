@@ -15,8 +15,9 @@ import (
 const (
 	// DefaultPamScope is the default scope for login — PAM all capabilities.
 	DefaultPamScope = "urn:cloud:idaas:pam|.all"
-	// DefaultClientId is the fallback client ID when discovery doesn't return cli_client_id.
-	DefaultClientId = "iap_developer"
+	// DefaultClientId is the fallback broker client ID when no client id is
+	// resolved from flags or existing profiles.
+	DefaultClientId = "iap_cloud_idaas_cli"
 	// LoginProfileTag is the profile tag used for login token caching.
 	LoginProfileTag = "cloud-idaas-cli"
 	// DiscoveryPath is the well-known path for instance discovery.
@@ -31,7 +32,6 @@ type InstanceDiscovery struct {
 		Internet string `json:"internet"`
 		Vpc      string `json:"vpc"`
 	} `json:"developer_api_endpoint"`
-	CliClientId string `json:"cli_client_id"`
 }
 
 // FetchInstanceDiscovery calls /.well-known/cloud-idaas-configuration and returns the discovery data.
@@ -72,14 +72,6 @@ func DoLogin(issuer, clientId, scope string, forceNew bool) (string, error) {
 		ForceNew: forceNew,
 		CacheKey: provider.GetCacheKey(),
 	})
-}
-
-// ResolveClientId resolves the client ID from discovery or falls back to default.
-func ResolveClientId(discovery *InstanceDiscovery) string {
-	if discovery != nil && discovery.CliClientId != "" {
-		return discovery.CliClientId
-	}
-	return DefaultClientId
 }
 
 // ResolvePopEndpoint resolves the developer API endpoint from discovery, preferring VPC if requested.

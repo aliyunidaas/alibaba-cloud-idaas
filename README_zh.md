@@ -273,7 +273,7 @@ GOOS=windows GOARCH=amd64 go build -o alibaba-cloud-idaas.exe .
         "access_token_provider": {
           "device_code": {
             "issuer": "https://<instance>/api/v2/<auth-server-id>/oauth2",
-            "client_id": "iap_developer"
+            "client_id": "iap_cloud_idaas_cli"
           }
         }
       }
@@ -318,7 +318,7 @@ alibaba-cloud-idaas fetch-token --profile my-api-key
 
 一条命令完成接入：只需提供实例域名，`onboard` 会自动发现实例
 （`/.well-known/cloud-idaas-configuration` → `instance_id` / `default_authorization_server` /
-`developer_api_endpoint`），执行设备码登录（broker 客户端默认 `iap_developer`，
+`developer_api_endpoint`），执行设备码登录（broker 客户端默认 `iap_cloud_idaas_cli`，
 可用 `--client-id` 覆盖），列出当前用户可 Assume 的云角色，并生成
 `cloud_account_token` profile（同时生成 aliyun-cli 的 `External` profile）—— 全程无需 AK。
 

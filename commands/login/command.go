@@ -28,7 +28,7 @@ var (
 	}
 	stringFlagClientId = &cli.StringFlag{
 		Name:  "client-id",
-		Usage: "Broker client application id (default: from discovery or iap_developer)",
+		Usage: "Broker client application id (default: iap_cloud_idaas_cli)",
 	}
 	stringFlagConfig = &cli.StringFlag{
 		Name:    "config",
@@ -93,7 +93,7 @@ func loginByInstance(instance, scope, clientId string, forceNew bool) error {
 	}
 	issuer := discovery.DefaultAuthorizationServerIssuer
 	if clientId == "" {
-		clientId = common.ResolveClientId(discovery)
+		clientId = common.DefaultClientId
 	}
 	utils.Stdout.Printf("Logging in (issuer=%s, client=%s) ...\n", issuer, clientId)
 	utils.Stdout.Println("Complete SSO/MFA in browser ...")

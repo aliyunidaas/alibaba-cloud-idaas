@@ -54,7 +54,7 @@ alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx 
 | `--prefix` | — | Prefix for generated profile names | `aliyun` | No |
 | `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
 | `--vpc` | — | Prefer the VPC endpoint | `false` | No |
-| `--client-id` | — | Broker client application ID (passed through to `login`) | explicit > existing profile > discovery `cli_client_id` > `iap_developer` | First run |
+| `--client-id` | — | Broker client application ID (passed through to `login`) | explicit > existing profile > `iap_cloud_idaas_cli` | First run |
 | `--force-new` | `-N` | Force device-code login (passed through to `login`) | `false` | No |
 
 ### `login`
@@ -80,7 +80,7 @@ alibaba-cloud-idaas login --instance acme.aliyunidaas.com --client-id app_xxx --
 | `--instance` | `-i` | Instance domain (first-login mode; inferred from an existing profile when omitted) | — | One of `--instance` / `--profile` |
 | `--profile` | `-p` | Existing profile name (refresh mode; issuer + scope + client-id are read from the profile) | — | One of `--instance` / `--profile` |
 | `--scope` | `-s` | Space-separated `audience\|scope` combinations | `urn:cloud:idaas:pam\|.all` | No |
-| `--client-id` | — | Broker client application ID (read from the profile in `--profile` mode) | must be explicit in `--instance` mode | In `--instance` mode |
+| `--client-id` | — | Broker client application ID (read from the profile in `--profile` mode) | `iap_cloud_idaas_cli` | No |
 | `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
 | `--force-new` | `-N` | Ignore the cache and log in again | `false` | No |
 
@@ -163,7 +163,7 @@ alibaba-cloud-idaas show roles --json
 |------|------|------|--------|------|
 | `--instance` | `-i` | IDaaS instance domain (inferred from an existing profile when omitted) | — | First run |
 | `--scope` | `-s` | Scope | `urn:cloud:idaas:pam\|.all` | No |
-| `--client-id` | — | Broker client application ID (inferred from an existing profile when omitted) | — | First run |
+| `--client-id` | — | Broker client application ID | explicit > existing profile > `iap_cloud_idaas_cli` | First run |
 | `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
 | `--vpc` | — | Prefer the VPC endpoint | `false` | No |
 | `--json` | — | Machine-readable JSON output | `false` | No |

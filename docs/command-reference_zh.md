@@ -54,7 +54,7 @@ alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx 
 | `--prefix` | — | 生成 profile 名前缀 | `aliyun` | 否 |
 | `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
 | `--vpc` | — | 优先 VPC 端点 | `false` | 否 |
-| `--client-id` | — | broker 客户端应用 ID（透传给 login） | 显式 > 已有 profile > discovery `cli_client_id` > `iap_developer` | 首次必填 |
+| `--client-id` | — | broker 客户端应用 ID（透传给 login） | 显式 > 已有 profile > `iap_cloud_idaas_cli` | 首次必填 |
 | `--force-new` | `-N` | 强制设备码登录（透传给 login） | `false` | 否 |
 
 ### `login`
@@ -80,7 +80,7 @@ alibaba-cloud-idaas login --instance acme.aliyunidaas.com --client-id app_xxx --
 | `--instance` | `-i` | 实例域名（首次登录模式，未传时从已有 profile 推断） | — | 与 `--profile` 二选一 |
 | `--profile` | `-p` | 已有 profile 名（刷新模式，从 profile 自动读 issuer+scope+client-id） | — | 与 `--instance` 二选一 |
 | `--scope` | `-s` | 空格分隔的 `audience\|scope` 组合串 | `urn:cloud:idaas:pam\|.all` | 否 |
-| `--client-id` | — | broker 客户端应用 ID（`--profile` 模式从 profile 自动读） | `--instance` 模式需显式提供 | `--instance` 模式必填 |
+| `--client-id` | — | broker 客户端应用 ID（`--profile` 模式从 profile 自动读） | `iap_cloud_idaas_cli` | 否 |
 | `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
 | `--force-new` | `-N` | 忽略缓存强制重新登录 | `false` | 否 |
 
@@ -163,7 +163,7 @@ alibaba-cloud-idaas show roles --json
 |------|------|------|--------|------|
 | `--instance` | `-i` | IDaaS 实例域名（未传时从已有 profile 推断） | — | 首次必填 |
 | `--scope` | `-s` | scope | `urn:cloud:idaas:pam\|.all` | 否 |
-| `--client-id` | — | broker 客户端应用 ID（未传时从已有 profile 推断） | — | 首次必填 |
+| `--client-id` | — | broker 客户端应用 ID | 显式 > 已有 profile > `iap_cloud_idaas_cli` | 首次必填 |
 | `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
 | `--vpc` | — | 优先 VPC 端点 | `false` | 否 |
 | `--json` | — | 机器可读 JSON 输出 | `false` | 否 |

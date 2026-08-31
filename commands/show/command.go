@@ -116,7 +116,7 @@ func buildShowRoles() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "instance", Aliases: []string{"i"}, Usage: "IDaaS instance domain (optional if profiles exist)"},
 			&cli.StringFlag{Name: "scope", Aliases: []string{"s"}, Usage: "Scope (default: urn:cloud:idaas:pam|.all)", Value: common.DefaultPamScope},
-			&cli.StringFlag{Name: "client-id", Usage: "Broker client id (default: from profile or iap_developer)"},
+			&cli.StringFlag{Name: "client-id", Usage: "Broker client id (default: from profile or iap_cloud_idaas_cli)"},
 			&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "IDaaS config file"},
 			&cli.BoolFlag{Name: "vpc", Usage: "Prefer VPC endpoint"},
 			&cli.BoolFlag{Name: "json", Usage: "Machine-readable JSON output"},
@@ -160,7 +160,7 @@ func showRoles(instance, scope, clientId, configFile string, preferVpc, jsonOutp
 	pop := common.ResolvePopEndpoint(discovery, preferVpc)
 	issuer := discovery.DefaultAuthorizationServerIssuer
 	if clientId == "" {
-		clientId = common.ResolveClientId(discovery)
+		clientId = common.DefaultClientId
 	}
 
 	// Login (use cached token if available)
@@ -345,9 +345,6 @@ func showInstance(instance string, preferVpc bool) error {
 	utils.Stdout.Printf("POP (internet):   %s\n", discovery.DeveloperApiEndpoint.Internet)
 	if discovery.DeveloperApiEndpoint.Vpc != "" {
 		utils.Stdout.Printf("POP (vpc):        %s\n", discovery.DeveloperApiEndpoint.Vpc)
-	}
-	if discovery.CliClientId != "" {
-		utils.Stdout.Printf("CLI Client ID:    %s\n", discovery.CliClientId)
 	}
 	return nil
 }
