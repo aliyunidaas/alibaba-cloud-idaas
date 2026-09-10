@@ -14,7 +14,7 @@ import (
 
 const (
 	// DefaultPamScope is the default scope for login — PAM all capabilities.
-	DefaultPamScope = "urn:cloud:idaas:pam|.all"
+	DefaultPamScope = "urn:cloud:idaas:pam|.all offline_access"
 	// DefaultClientId is the fallback broker client ID when no client id is
 	// resolved from flags or existing profiles.
 	DefaultClientId = "iap_cloud_idaas_cli"
