@@ -23,6 +23,7 @@ type CloudAccountTokenCloudAccountRoleAccessCredential struct {
 
 	AlibabaCloudStsToken *CloudAccountTokenAlibabaCloudStsToken `json:"alibabaCloudStsToken"`
 	AwsStsToken          *CloudAccountTokenAwsStsToken          `json:"awsStsToken"`
+	TencentCloudStsToken *CloudAccountTokenTencentCloudStsToken `json:"tencentCloudStsToken"`
 }
 
 type CloudAccountTokenAlibabaCloudStsToken struct {
@@ -37,6 +38,15 @@ type CloudAccountTokenAwsStsToken struct {
 	SecretAccessKey string `json:"secretAccessKey"`
 	SessionToken    string `json:"sessionToken"`
 	Expiration      string `json:"expiration"`
+}
+
+// TODO(contract): field name "tencentCloudStsToken" is an assumption pending
+// backend alignment on the obtainAccessCredential response.
+type CloudAccountTokenTencentCloudStsToken struct {
+	SecretId     string `json:"tmpSecretId"`
+	SecretKey    string `json:"tmpSecretKey"`
+	SessionToken string `json:"token"`
+	Expiration   string `json:"expiration"`
 }
 
 func (t *CloudAccountToken) Marshal() (string, error) {
@@ -81,6 +91,13 @@ func (t *CloudAccountToken) IsAlibabaCloudToken() bool {
 func (t *CloudAccountToken) IsAwsToken() bool {
 	if t.CloudAccountRoleAccessCredential != nil {
 		return t.CloudAccountRoleAccessCredential.AwsStsToken != nil
+	}
+	return false
+}
+
+func (t *CloudAccountToken) IsTencentCloudToken() bool {
+	if t.CloudAccountRoleAccessCredential != nil {
+		return t.CloudAccountRoleAccessCredential.TencentCloudStsToken != nil
 	}
 	return false
 }

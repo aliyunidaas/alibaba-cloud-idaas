@@ -131,6 +131,9 @@ func fetchToken(configFilename, profile, format, oidcField, oidcFormat, output s
 		} else if cloudAccountToken.IsAwsToken() {
 			awsSts := cloud.ConvertCloudAccountTokenAwsStsTokenToAwsStsToken(cloudAccountToken.CloudAccountRoleAccessCredential.AwsStsToken)
 			stdOutput, stdOutputErr = awsSts.Marshal()
+		} else if cloudAccountToken.IsTencentCloudToken() {
+			stdOutput, stdOutputErr = cloud.MarshalTencentCloudCliCredential(
+				cloudAccountToken.CloudAccountRoleAccessCredential.TencentCloudStsToken)
 		} else {
 			stdOutput, stdOutputErr = cloudAccountToken.Marshal()
 		}

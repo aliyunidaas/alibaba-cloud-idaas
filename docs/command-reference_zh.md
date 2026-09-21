@@ -2,7 +2,7 @@
 
 [English](command-reference.md) | **中文**
 
-> 版本：v0.2.0-beta
+> 版本：v0.2.3-beta
 
 ## 命令总览
 
@@ -51,7 +51,7 @@ alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx 
 |------|------|------|--------|------|
 | `--instance` | `-i` | IDaaS 实例域名（未传时从已有 profile 推断） | — | 首次必填 |
 | `--target` | — | 目标 CLI 工具（逗号分隔：`aliyun-cli`/`aws-cli`/`tencentcloud-cli`/`mcp`/`none`） | 全部适用 | 否 |
-| `--prefix` | — | 生成 profile 名前缀 | `aliyun` | 否 |
+| `--prefix` | — | 生成 profile 名前缀 | 按厂商自动选择（`aliyun`/`aws`/`tencentcloud`） | 否 |
 | `--config` | `-c` | 配置文件路径 | `~/.aliyun/alibaba-cloud-idaas.json` | 否 |
 | `--vpc` | — | 优先 VPC 端点 | `false` | 否 |
 | `--client-id` | — | broker 客户端应用 ID（透传给 login） | 显式 > 已有 profile > `iap_cloud_idaas_cli` | 首次必填 |

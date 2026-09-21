@@ -2,7 +2,7 @@
 
 **English** | [中文](command-reference_zh.md)
 
-> Version: v0.2.0-beta
+> Version: v0.2.3-beta
 
 ## Command Overview
 
@@ -51,7 +51,7 @@ alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx 
 |------|------|------|--------|------|
 | `--instance` | `-i` | IDaaS instance domain (inferred from an existing profile when omitted) | — | First run |
 | `--target` | — | Target CLI tools (comma-separated: `aliyun-cli`/`aws-cli`/`tencentcloud-cli`/`mcp`/`none`) | all applicable | No |
-| `--prefix` | — | Prefix for generated profile names | `aliyun` | No |
+| `--prefix` | — | Prefix for generated profile names | vendor-based (`aliyun`/`aws`/`tencentcloud`) | No |
 | `--config` | `-c` | Config file path | `~/.aliyun/alibaba-cloud-idaas.json` | No |
 | `--vpc` | — | Prefer the VPC endpoint | `false` | No |
 | `--client-id` | — | Broker client application ID (passed through to `login`) | explicit > existing profile > `iap_cloud_idaas_cli` | First run |

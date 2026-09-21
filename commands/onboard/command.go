@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/cloud/cloud_account"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/common"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
@@ -19,7 +21,24 @@ const (
 	listPathFormat = "%s/v2/%s/cloudAccountRoles/_/actions/listAssumableCloudAccountRoles"
 	vendorAlibaba  = "alibaba_cloud"
 	vendorAws      = "aws"
+	// TODO(contract): vendor value "tencent_cloud" is an assumption pending
+	// backend alignment on cloudAccountVendorType for TencentCloud roles.
+	vendorTencent = "tencent_cloud"
 )
+
+// vendorPrefix returns the default profile name prefix for a cloud vendor.
+func vendorPrefix(vendorType string) string {
+	switch {
+	case strings.EqualFold(vendorType, vendorAlibaba):
+		return "aliyun"
+	case strings.EqualFold(vendorType, vendorAws):
+		return "aws"
+	case strings.EqualFold(vendorType, vendorTencent):
+		return "tencentcloud"
+	default:
+		return "cloud"
+	}
+}
 
 type assumableRoleList struct {
 	Entities []assumableRole `json:"entities"`
@@ -51,8 +70,7 @@ var (
 	}
 	stringFlagPrefix = &cli.StringFlag{
 		Name:  "prefix",
-		Usage: "Generated profile name prefix",
-		Value: "aliyun",
+		Usage: "Profile name prefix (default: vendor-based, e.g. aliyun/aws/tencentcloud)",
 	}
 	stringFlagConfig = &cli.StringFlag{
 		Name:    "config",
@@ -114,9 +132,6 @@ type onboardOptions struct {
 func runOnboard(opts *onboardOptions) error {
 	instance := normalizeDomain(opts.instance)
 	prefix := opts.prefix
-	if prefix == "" {
-		prefix = "aliyun"
-	}
 
 	// If --instance not provided, try to infer from existing profiles
 	if instance == "" {
@@ -207,11 +222,25 @@ func runOnboard(opts *onboardOptions) error {
 				utils.Stderr.Fprintf("Warning: write aws-cli config failed: %v\n", err)
 			}
 		}
+		if containsString(targets, "tencentcloud-cli") {
+			// Unlike aliyun-cli/aws-cli, tccli credentials live only in the
+			// .credential files, so a write failure must abort onboard.
+			if err := writeTencentcloudCliProfiles(generated, configFilename); err != nil {
+				return errors.Wrap(err, "write tencentcloud-cli config failed")
+			}
+		}
 	}
 
 	utils.Stdout.Println("")
 	utils.Stdout.Printf("Done. Generated %d profile(s). Try:\n", len(generated))
 	utils.Stdout.Printf("  aliyun --profile %s sts GetCallerIdentity\n", firstProfile)
+	for _, p := range generated {
+		if strings.EqualFold(p.VendorType, vendorTencent) {
+			utils.Stdout.Printf("TencentCloud credentials are temporary. Refresh with:\n"+
+				"  alibaba-cloud-idaas fetch-token --profile %s --output ~/.tccli/%s.credential\n", p.Name, p.Name)
+			break
+		}
+	}
 	return nil
 }
 
@@ -267,7 +296,12 @@ func generateAndSaveProfiles(configFilename, prefix, instanceId, pop, issuer, cl
 	var generated []generatedProfile
 	var firstProfile string
 	for _, r := range roles {
-		name := uniqueProfileName(usedNames, prefix, r)
+		// Use --prefix if specified, otherwise derive from vendor type
+		effectivePrefix := prefix
+		if effectivePrefix == "" {
+			effectivePrefix = vendorPrefix(r.CloudAccountVendorType)
+		}
+		name := uniqueProfileName(usedNames, effectivePrefix, r)
 		cloudConfig.Profile[name] = &config.CloudStsConfig{
 			CloudAccount: &config.CloudAccountTokenConfig{
 				InstanceId:                 instanceId,
@@ -330,9 +364,13 @@ func writeAliyunCliProfiles(profiles []generatedProfile, configFilename, pop str
 	if region == "" {
 		region = "cn-hangzhou"
 	}
+	firstAliyunProfile := ""
 	for _, p := range profiles {
 		if !strings.EqualFold(p.VendorType, vendorAlibaba) && p.VendorType != "" {
 			continue
+		}
+		if firstAliyunProfile == "" {
+			firstAliyunProfile = p.Name
 		}
 		processCommand := fmt.Sprintf("%s fetch-token --profile %s", self, p.Name)
 		if !isDefaultConfig(configFilename) {
@@ -344,8 +382,8 @@ func writeAliyunCliProfiles(profiles []generatedProfile, configFilename, pop str
 		})
 	}
 	root["profiles"] = kept
-	if cur, _ := root["current"].(string); cur == "" && len(profiles) > 0 {
-		root["current"] = profiles[0].Name
+	if cur, _ := root["current"].(string); cur == "" && firstAliyunProfile != "" {
+		root["current"] = firstAliyunProfile
 	}
 	if err := os.MkdirAll(filepath.Dir(aliyunConfigFile), 0700); err != nil {
 		return errors.Wrapf(err, "create aliyun config dir")
@@ -371,27 +409,63 @@ func writeAwsCliProfiles(profiles []generatedProfile, configFilename string) err
 		return errors.Wrap(err, "get home dir")
 	}
 	awsConfigFile := filepath.Join(home, ".aws", "config")
-	// Read existing config as lines
-	var lines []string
-	if data, readErr := os.ReadFile(awsConfigFile); readErr == nil {
-		lines = strings.Split(string(data), "\n")
-	}
-	// Build a set of existing profile section names to avoid duplicates
-	existingSections := map[string]bool{}
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "[profile ") {
-			existingSections[strings.TrimSuffix(strings.TrimPrefix(line, "[profile "), "]")] = true
+
+	// Build a set of new profile names for filtering
+	newProfileNames := map[string]bool{}
+	for _, p := range profiles {
+		if strings.EqualFold(p.VendorType, vendorAws) || p.VendorType == "" {
+			newProfileNames[p.Name] = true
 		}
 	}
-	// Append new profiles
+
+	// Read existing config and parse into sections
+	// Keep sections that are NOT in the new profile names (preserve non-IDaaS profiles)
+	var keptLines []string
+	hasDefaultSection := false
+	if data, readErr := os.ReadFile(awsConfigFile); readErr == nil && len(data) > 0 {
+		lines := strings.Split(string(data), "\n")
+		var currentSection []string
+		var currentSectionName string
+		var inMatchingSection bool
+
+		flushSection := func() {
+			if !inMatchingSection && len(currentSection) > 0 {
+				keptLines = append(keptLines, currentSection...)
+			}
+			currentSection = nil
+			currentSectionName = ""
+			inMatchingSection = false
+		}
+
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "[profile ") {
+				flushSection()
+				currentSectionName = strings.TrimSuffix(strings.TrimPrefix(trimmed, "[profile "), "]")
+				inMatchingSection = newProfileNames[currentSectionName]
+				currentSection = append(currentSection, line)
+			} else if strings.HasPrefix(trimmed, "[") {
+				flushSection()
+				if strings.EqualFold(trimmed, "[default]") {
+					hasDefaultSection = true
+				}
+				currentSection = append(currentSection, line)
+			} else {
+				currentSection = append(currentSection, line)
+			}
+		}
+		flushSection()
+	}
+
+	// Build new profile sections
 	var newLines []string
+	firstAwsProfile := ""
 	for _, p := range profiles {
 		if !strings.EqualFold(p.VendorType, vendorAws) {
 			continue
 		}
-		if existingSections[p.Name] {
-			continue
+		if firstAwsProfile == "" {
+			firstAwsProfile = p.Name
 		}
 		processCommand := fmt.Sprintf("%s fetch-token --profile %s", self, p.Name)
 		if !isDefaultConfig(configFilename) {
@@ -404,22 +478,77 @@ func writeAwsCliProfiles(profiles []generatedProfile, configFilename string) err
 			"",
 		)
 	}
-	if len(newLines) == 0 {
-		return nil
+
+	if !hasDefaultSection && firstAwsProfile != "" {
+		processCommand := fmt.Sprintf("%s fetch-token --profile %s", self, firstAwsProfile)
+		if !isDefaultConfig(configFilename) {
+			processCommand += " --config " + configFilename
+		}
+		defaultLines := []string{
+			"[default]",
+			fmt.Sprintf("credential_process = %s", processCommand),
+			"region = us-east-1",
+			"",
+		}
+		newLines = append(defaultLines, newLines...)
 	}
+
 	if err := os.MkdirAll(filepath.Dir(awsConfigFile), 0700); err != nil {
 		return errors.Wrapf(err, "create aws config dir")
 	}
-	// Append to existing file
-	content := strings.Join(lines, "\n")
+
+	// Combine kept lines + new profiles
+	allLines := append(keptLines, newLines...)
+	content := strings.Join(allLines, "\n")
 	if len(content) > 0 && !strings.HasSuffix(content, "\n") {
 		content += "\n"
 	}
-	content += strings.Join(newLines, "\n")
 	if err := os.WriteFile(awsConfigFile, []byte(content), 0600); err != nil {
 		return errors.Wrapf(err, "write aws config %s", awsConfigFile)
 	}
 	utils.Stdout.Printf("      wrote aws-cli profiles to %s\n", awsConfigFile)
+	return nil
+}
+
+// writeTencentcloudCliProfiles writes ~/.tccli/<profile>.credential for each TencentCloud role.
+// tccli has no external credential process (unlike aliyun-cli/aws-cli), so
+// the temporary credential is written statically and must be refreshed via
+// fetch-token --output when it expires.
+func writeTencentcloudCliProfiles(profiles []generatedProfile, configFilename string) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return errors.Wrap(err, "get home dir")
+	}
+	tccliDir := filepath.Join(home, ".tccli")
+	if err := os.MkdirAll(tccliDir, 0700); err != nil {
+		return errors.Wrapf(err, "create tccli dir %s", tccliDir)
+	}
+	for _, p := range profiles {
+		if !strings.EqualFold(p.VendorType, vendorTencent) {
+			continue
+		}
+		// Fetch the credential via the same path as fetch-token (reuses the
+		// cloud_token cache and the already-cached OIDC access token).
+		sts, _, err := cloud.FetchCloudStsFromDefaultConfig(configFilename, p.Name, &cloud.FetchCloudStsOptions{})
+		if err != nil {
+			return errors.Wrapf(err, "fetch TencentCloud credential for profile %s", p.Name)
+		}
+		cloudAccountToken, ok := sts.(*cloud_account.CloudAccountToken)
+		if !ok || !cloudAccountToken.IsTencentCloudToken() {
+			return fmt.Errorf("profile %s did not return a TencentCloud credential", p.Name)
+		}
+		credentialJson, err := cloud.MarshalTencentCloudCliCredential(
+			cloudAccountToken.CloudAccountRoleAccessCredential.TencentCloudStsToken)
+		if err != nil {
+			return errors.Wrapf(err, "marshal tccli credential for profile %s", p.Name)
+		}
+		credentialFile := filepath.Join(tccliDir, p.Name+".credential")
+		// always overwrite: the file holds a temporary credential
+		if err := os.WriteFile(credentialFile, []byte(credentialJson), 0600); err != nil {
+			return errors.Wrapf(err, "write %s", credentialFile)
+		}
+		utils.Stdout.Printf("      wrote tccli profile %s to %s\n", p.Name, tccliDir)
+	}
 	return nil
 }
 
@@ -429,6 +558,7 @@ func parseTargets(target string, roles []assumableRole) []string {
 		targets := []string{}
 		hasAlibaba := false
 		hasAws := false
+		hasTencent := false
 		for _, r := range roles {
 			if strings.EqualFold(r.CloudAccountVendorType, vendorAlibaba) {
 				hasAlibaba = true
@@ -436,12 +566,18 @@ func parseTargets(target string, roles []assumableRole) []string {
 			if strings.EqualFold(r.CloudAccountVendorType, vendorAws) {
 				hasAws = true
 			}
+			if strings.EqualFold(r.CloudAccountVendorType, vendorTencent) {
+				hasTencent = true
+			}
 		}
 		if hasAlibaba {
 			targets = append(targets, "aliyun-cli")
 		}
 		if hasAws {
 			targets = append(targets, "aws-cli")
+		}
+		if hasTencent {
+			targets = append(targets, "tencentcloud-cli")
 		}
 		return targets
 	}
