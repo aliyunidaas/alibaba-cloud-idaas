@@ -6,7 +6,36 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
 )
+
+func TestGenerateProfilesPreservesDefaultsAndTemplateRoles(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "profiles.json")
+	initial := &config.CloudCredentialConfig{Version: config.Version1, CurrentProfile: "existing", Profile: map[string]*config.CloudStsConfig{"existing": {Comment: "preserve"}}}
+	if err := saveCloudCredentialConfig(path, initial); err != nil {
+		t.Fatal(err)
+	}
+	yes := true
+	roles := []assumableRole{
+		{CloudAccountRoleName: "Template Role", CloudAccountRoleExternalId: "arn:template", CloudAccountVendorType: vendorAlibaba, CreatedByPermissionTemplate: &yes},
+		{CloudAccountRoleName: "Ordinary Role", CloudAccountRoleExternalId: "arn:ordinary", CloudAccountVendorType: vendorAlibaba},
+	}
+	profiles, _, err := generateAndSaveProfiles(path, "", "instance", "https://api.example.com", "https://issuer.example.com", "client", roles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved, err := config.ReadCloudCredentialConfig(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(profiles) != 2 || len(saved.Profile) != 3 || saved.CurrentProfile != "existing" {
+		t.Fatalf("profile/default regression: %+v", saved)
+	}
+	if saved.Profile["aliyun-template-role"].CloudAccount.CloudAccountRoleExternalId != "arn:template" {
+		t.Fatal("template role profile missing")
+	}
+}
 
 func TestWriteAliyunCliProfilesUsesFirstAliyunProfileAsCurrent(t *testing.T) {
 	home := t.TempDir()

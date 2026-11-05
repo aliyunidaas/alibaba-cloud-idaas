@@ -12,21 +12,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const listRolesPathFormat = "%s/v2/%s/cloudAccountRoles/_/actions/listAssumableCloudAccountRoles"
-
-type assumableRoleList struct {
-	Entities []assumableRole `json:"entities"`
-}
-
-type assumableRole struct {
-	CloudAccountId             string `json:"cloudAccountId"`
-	CloudAccountRoleId         string `json:"cloudAccountRoleId"`
-	CloudAccountRoleName       string `json:"cloudAccountRoleName"`
-	CloudAccountRoleExternalId string `json:"cloudAccountRoleExternalId"`
-	CloudAccountVendorType     string `json:"cloudAccountVendorType"`
-	Status                     string `json:"status"`
-}
-
 func BuildCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "show",
@@ -170,31 +155,28 @@ func showRoles(instance, scope, clientId, configFile string, preferVpc, jsonOutp
 	}
 
 	// List roles
-	listUrl := fmt.Sprintf(listRolesPathFormat, pop, discovery.InstanceId)
-	headers := map[string]string{"Authorization": "Bearer " + accessToken}
-	body, err := utils.FetchAsString(httpClient, utils.HttpMethodGet, listUrl, headers)
+	list, err := common.DiscoverAssumableRoles(httpClient, pop, discovery.InstanceId, accessToken)
 	if err != nil {
 		return fmt.Errorf("list roles failed: %w", err)
 	}
-	var list assumableRoleList
-	if err := json.Unmarshal([]byte(body), &list); err != nil {
-		return fmt.Errorf("unmarshal failed: %w", err)
-	}
-
 	if jsonOutput {
-		utils.Stdout.Println(body)
+		body, err := json.Marshal(list)
+		if err != nil {
+			return fmt.Errorf("marshal roles: %w", err)
+		}
+		utils.Stdout.Println(string(body))
 		return nil
 	}
 
 	if len(list.Entities) == 0 {
-		utils.Stdout.Println("No assumable cloud roles found.")
+		utils.Stdout.Println("No assumable cloud roles found. Check direct/group role grants, permission template grants, enabled template status and matching usage type.")
 		return nil
 	}
 	utils.Stdout.Printf("Found %d role(s):\n\n", len(list.Entities))
-	utils.Stdout.Printf("  %-30s %-55s %-15s %s\n", "NAME", "EXTERNAL ID", "VENDOR", "STATUS")
+	utils.Stdout.Printf("  %-30s %-55s %-15s %-10s %s\n", "NAME", "EXTERNAL ID", "VENDOR", "STATUS", "TEMPLATE-CREATED")
 	for _, r := range list.Entities {
-		utils.Stdout.Printf("  %-30s %-55s %-15s %s\n",
-			r.CloudAccountRoleName, r.CloudAccountRoleExternalId, r.CloudAccountVendorType, r.Status)
+		utils.Stdout.Printf("  %-30s %-55s %-15s %-10s %s\n",
+			r.CloudAccountRoleName, r.CloudAccountRoleExternalId, r.CloudAccountVendorType, r.Status, common.TemplateCreationLabel(r.CreatedByPermissionTemplate))
 	}
 	return nil
 }

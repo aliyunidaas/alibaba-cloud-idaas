@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	listPathFormat = "%s/v2/%s/cloudAccountRoles/_/actions/listAssumableCloudAccountRoles"
-	vendorAlibaba  = "alibaba_cloud"
-	vendorAws      = "aws"
+	vendorAlibaba = "alibaba_cloud"
+	vendorAws     = "aws"
 	// TODO(contract): vendor value "tencent_cloud" is an assumption pending
 	// backend alignment on cloudAccountVendorType for TencentCloud roles.
 	vendorTencent = "tencent_cloud"
@@ -40,18 +39,7 @@ func vendorPrefix(vendorType string) string {
 	}
 }
 
-type assumableRoleList struct {
-	Entities []assumableRole `json:"entities"`
-}
-
-type assumableRole struct {
-	CloudAccountId             string `json:"cloudAccountId"`
-	CloudAccountRoleId         string `json:"cloudAccountRoleId"`
-	CloudAccountRoleName       string `json:"cloudAccountRoleName"`
-	CloudAccountRoleExternalId string `json:"cloudAccountRoleExternalId"`
-	CloudAccountVendorType     string `json:"cloudAccountVendorType"`
-	Status                     string `json:"status"`
-}
+type assumableRole = common.AssumableRole
 
 type generatedProfile struct {
 	Name       string
@@ -191,10 +179,10 @@ func runOnboard(opts *onboardOptions) error {
 		return errors.Wrap(err, "list assumable cloud roles failed")
 	}
 	if len(roles) == 0 {
-		return errors.New("no assumable cloud roles found for current user.\n  hint: 请联系管理员在 PS 授权规则中把目标云角色授予你或你所在的组，然后重试 onboard")
+		return errors.New("no assumable cloud roles found for current user.\n  hint: check direct/group role grants and permission template grants, enabled template status and matching usage type")
 	}
 	for _, r := range roles {
-		utils.Stdout.Printf("      - %s\t%s\t[%s]\n", r.CloudAccountRoleName, r.CloudAccountRoleExternalId, r.CloudAccountVendorType)
+		utils.Stdout.Printf("      - %s\t%s\t[%s]\ttemplate-created=%s\n", r.CloudAccountRoleName, r.CloudAccountRoleExternalId, r.CloudAccountVendorType, common.TemplateCreationLabel(r.CreatedByPermissionTemplate))
 	}
 
 	// 4. Generate profiles + CLI configs
@@ -250,15 +238,9 @@ func listAssumableRoles(client *http.Client, pop, instanceId, issuer, clientId s
 	if err != nil {
 		return nil, errors.Wrap(err, "get access token from cache")
 	}
-	listUrl := fmt.Sprintf(listPathFormat, pop, instanceId)
-	headers := map[string]string{"Authorization": "Bearer " + accessToken}
-	body, err := utils.FetchAsString(client, utils.HttpMethodGet, listUrl, headers)
+	list, err := common.DiscoverAssumableRoles(client, pop, instanceId, accessToken)
 	if err != nil {
 		return nil, err
-	}
-	var list assumableRoleList
-	if err := json.Unmarshal([]byte(body), &list); err != nil {
-		return nil, errors.Wrapf(err, "unmarshal list response: %s", body)
 	}
 	return list.Entities, nil
 }
