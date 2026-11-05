@@ -316,6 +316,20 @@ alibaba-cloud-idaas fetch-token --profile my-api-key
 
 ### 零配置接入
 
+角色发现涵盖直接授权的角色和通过权限模板授予的角色。`onboard` 与 `show roles`
+每页固定发送 `includePermissionTemplateRoles=true`，全部分页成功后才展示完整结果或生成配置，
+不提供用户开关。任一页失败则本轮发现失败。
+`TEMPLATE-CREATED` 的 yes/no/unknown 表示“模板创建：是/否/未知”，不代表授权来源。
+`show roles --json` 保留顶层对象，包含完整 `entities` 和实际汇总的 `totalCount`，
+不输出单页游标或单页 `maxResults`。
+
+版本历史和未发布改动见 [更新日志](CHANGELOG_zh.md)。
+
+预发联调前先执行 `show instance --instance <实例域名>`，核对实例 ID、issuer 和
+DeveloperAPI 端点。CLI 通过实例发现选择环境，不提供单独的 `--pre` 开关。
+可先用 `onboard --instance <实例域名> --target none --config <测试配置>` 验证发现及
+profile 生成，不写入日常云 CLI 配置。
+
 一条命令完成接入：只需提供实例域名，`onboard` 会自动发现实例
 （`/.well-known/cloud-idaas-configuration` → `instance_id` / `default_authorization_server` /
 `developer_api_endpoint`），执行设备码登录（broker 客户端默认 `iap_cloud_idaas_cli`，

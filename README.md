@@ -316,6 +316,23 @@ Subcommands:
 
 ### Zero-config onboard
 
+Role discovery includes directly authorized roles and roles granted through permission templates.
+Both `onboard` and `show roles` always request `includePermissionTemplateRoles=true`
+and fetch all pages before reporting success or generating profiles. There is no
+user switch for this API parameter. A failed page aborts the discovery.
+`TEMPLATE-CREATED` is yes/no/unknown and describes how the role was created,
+not its authorization source. `show roles --json` returns an object containing
+the complete `entities` array and its collected `totalCount`, without a page cursor
+or per-page `maxResults`.
+
+See [CHANGELOG.md](CHANGELOG.md) for release history and unreleased changes.
+
+For pre-release testing, run `show instance --instance <domain>` first and verify
+the instance ID, issuer and DeveloperAPI endpoint against the intended environment.
+The CLI uses instance discovery; there is no separate `--pre` switch.
+Use `onboard --instance <domain> --target none --config <test-config>` to validate
+profile generation without writing your normal cloud CLI configuration.
+
 One command to onboard: given only the instance domain, `onboard` discovers the instance
 (`/.well-known/cloud-idaas-configuration` → `instance_id` / `default_authorization_server` /
 `developer_api_endpoint`), performs a device-code login (broker client defaults to `iap_cloud_idaas_cli`,
