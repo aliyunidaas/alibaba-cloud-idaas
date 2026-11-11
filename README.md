@@ -345,7 +345,7 @@ alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com
 alibaba-cloud-idaas onboard --instance acme.aliyunidaas.com --client-id app_xxx --vpc
 ```
 
-Login (device code) uses the composite scope `urn:cloud:idaas:pam|cloud_account_role:obtain_access_credential`
+Login (device code) defaults to `urn:cloud:idaas:pam|.all offline_access`
 against the instance authorization server. After `onboard`, use any generated profile directly:
 
 ```shell
@@ -657,3 +657,7 @@ $ echo '{ "protocolVersion": 1, "provider": "idaas", "ids": ["default_model"] }'
   }
 }
 ```
+
+### Onboarding configuration compatibility
+
+This development branch preserves existing defaults, identity names and config version 1. AWS profiles use partition-compatible regions and are named only; conflicting existing regions require an explicit override. Ambiguous instance resolution and configuration failures are errors, never silent identity switches. `configure switch --profile <name>` explicitly selects the Broker default only. See [commands and migration notes](docs/command-reference.md). This build is pending release and does not change credential caching or repeated device authorization.

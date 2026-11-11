@@ -3,11 +3,18 @@ package show
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/show_signer_public_key"
+	"gopkg.in/ini.v1"
 	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/common"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/config"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/constants"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 	"github.com/urfave/cli/v2"
 )
@@ -64,7 +71,16 @@ func showProfiles(configFile, filter string, color bool) error {
 	}
 	utils.Stdout.Printf("Config: %s\n", configFile)
 	utils.Stdout.Printf("Current: %s\n\n", cloudConfig.CurrentProfile)
-	for name, sts := range cloudConfig.Profile {
+	names := []string{}
+	for name := range cloudConfig.Profile {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		sts := cloudConfig.Profile[name]
+		if sts == nil {
+			continue
+		}
 		if filter != "" && !contains(name, filter) {
 			continue
 		}
@@ -113,26 +129,12 @@ func buildShowRoles() *cli.Command {
 }
 
 func showRoles(instance, scope, clientId, configFile string, preferVpc, jsonOutput bool) error {
-	instance = normalizeDomain(instance)
-
-	// Infer instance + client-id from existing profiles if not provided
-	if instance == "" || clientId == "" {
-		if configFile == "" {
-			configFile, _ = config.GetDefaultCloudCredentialConfigFile()
-		}
-		if inferred := common.InferFromProfiles(configFile); inferred != nil {
-			if instance == "" {
-				instance = inferred.Instance
-			}
-			if clientId == "" {
-				clientId = inferred.ClientId
-			}
-		}
+	context, err := common.ResolveRegistrationContext(configFile, instance, clientId)
+	if err != nil {
+		return err
 	}
-	if instance == "" {
-		return fmt.Errorf("instance domain is required. Run 'alibaba-cloud-idaas login --instance <域名> --client-id <app_id>' first, or specify --instance")
-	}
-	instance = normalizeDomain(instance)
+	instance = context.Instance
+	clientId = context.ClientID
 	httpClient := utils.BuildHttpClient()
 
 	discovery, err := common.FetchInstanceDiscovery(httpClient, instance)
@@ -193,8 +195,7 @@ func buildShowCache() *cli.Command {
 			&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "Name filter"},
 		},
 		Action: func(c *cli.Context) error {
-			// Delegate to existing show_cache command logic by re-running it
-			return nil // placeholder — existing show-cache command remains as alias
+			return listCacheMetadata(c.String("category"), c.String("name"))
 		},
 	}
 }
@@ -205,7 +206,7 @@ func buildShowToken() *cli.Command {
 	return &cli.Command{
 		Name:    "token",
 		Aliases: []string{"t"},
-		Usage:   "Show current credential token (human-readable)",
+		Usage:   "Credential display requires the explicit legacy show-token command",
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "Profile"},
 			&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "Config file"},
@@ -214,7 +215,7 @@ func buildShowToken() *cli.Command {
 			&cli.BoolFlag{Name: "force-new", Aliases: []string{"N"}, Usage: "Force refresh"},
 		},
 		Action: func(c *cli.Context) error {
-			return nil // placeholder — existing show-token command remains as alias
+			return fmt.Errorf("show token does not expose credentials implicitly; use the explicit legacy show-token command only if you intend to display secret credentials")
 		},
 	}
 }
@@ -239,12 +240,9 @@ func buildShowStatus() *cli.Command {
 
 func showStatus(flagProfile, configFile string, jsonOutput bool) error {
 	profile := common.ResolveProfile(flagProfile)
-	if configFile == "" {
-		var err error
-		configFile, err = config.GetDefaultCloudCredentialConfigFile()
-		if err != nil {
-			return err
-		}
+	configFile, err := common.ResolveConfigFilename(configFile)
+	if err != nil {
+		return err
 	}
 	cloudConfig, err := config.ReadCloudCredentialConfig(configFile)
 	if err != nil {
@@ -262,9 +260,8 @@ func showStatus(flagProfile, configFile string, jsonOutput bool) error {
 		return nil
 	}
 	stsConfig, ok := cloudConfig.Profile[profile]
-	if !ok {
-		utils.Stdout.Printf("Profile '%s' not found.\n", profile)
-		return nil
+	if !ok || stsConfig == nil {
+		return fmt.Errorf("profile %q not found or invalid", profile)
 	}
 	providerType := "unknown"
 	instanceId := ""
@@ -284,8 +281,15 @@ func showStatus(flagProfile, configFile string, jsonOutput bool) error {
 	}
 	serveRunning := checkServe()
 	if jsonOutput {
-		utils.Stdout.Printf(`{"profile":"%s","provider":"%s","instance_id":"%s","serve_running":%t}`+"\n",
-			profile, providerType, instanceId, serveRunning)
+		value := map[string]interface{}{"profile": profile, "provider": providerType, "instance_id": instanceId, "serve_running": serveRunning}
+		for k, v := range statusContext(cloudConfig, stsConfig, profile, configFile) {
+			value[k] = v
+		}
+		encoded, err := json.Marshal(value)
+		if err != nil {
+			return err
+		}
+		utils.Stdout.Println(string(encoded))
 	} else {
 		utils.Stdout.Printf("Profile:   %s\n", profile)
 		utils.Stdout.Printf("Provider:  %s\n", providerType)
@@ -294,6 +298,10 @@ func showStatus(flagProfile, configFile string, jsonOutput bool) error {
 		}
 		utils.Stdout.Printf("Serve:     %s\n", boolStr(serveRunning, "running", "not running"))
 		utils.Stdout.Printf("\nProfiles:  %d total\n", len(cloudConfig.Profile))
+		extra := statusContext(cloudConfig, stsConfig, profile, configFile)
+		for _, key := range []string{"config_file", "config_state", "client_id", "client_id_source", "client_context", "issuer", "broker_current_profile", "aliyun_current_profile", "defaults_differ", "aws_default_state", "aws_default_idaas_profile", "aws_environment_profile", "cache_readability", "login_state", "cloud_api_verification"} {
+			utils.Stdout.Printf("%s: %v\n", key, extra[key])
+		}
 	}
 	return nil
 }
@@ -308,9 +316,20 @@ func buildShowInstance() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "instance", Aliases: []string{"d"}, Usage: "IDaaS instance domain", Required: true},
 			&cli.BoolFlag{Name: "vpc", Usage: "Prefer VPC endpoint"},
+			&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "Broker config for client-id resolution"},
+			&cli.StringFlag{Name: "client-id", Usage: "Optional override; default: matching profile or iap_cloud_idaas_cli"},
 		},
 		Action: func(c *cli.Context) error {
-			return showInstance(c.String("instance"), c.Bool("vpc"))
+			filename, err := common.ResolveConfigFilename(c.String("config"))
+			if err != nil {
+				return err
+			}
+			context, err := common.ResolveRegistrationContext(filename, c.String("instance"), c.String("client-id"))
+			if err != nil {
+				return err
+			}
+			utils.Stdout.Printf("Config file:     %s\nClient ID:       %s\nClient source:   %s\n", filename, context.ClientID, context.ClientIDSource)
+			return showInstance(context.Instance, c.Bool("vpc"))
 		},
 	}
 }
@@ -334,18 +353,102 @@ func showInstance(instance string, preferVpc bool) error {
 // --- show signer-key ---
 
 func buildShowSignerKey() *cli.Command {
-	return &cli.Command{
-		Name:    "signer-key",
-		Aliases: []string{"sk"},
-		Usage:   "Show external signer public key",
-		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "profile", Aliases: []string{"p"}, Usage: "Profile"},
-			&cli.StringFlag{Name: "config", Aliases: []string{"c"}, Usage: "Config file"},
-		},
-		Action: func(c *cli.Context) error {
-			return nil // placeholder — existing show-signer-public-key remains as alias
-		},
+	command := show_signer_public_key.BuildCommand()
+	command.Name = "signer-key"
+	command.Aliases = []string{"sk"}
+	return command
+}
+
+func statusContext(cfg *config.CloudCredentialConfig, sts *config.CloudStsConfig, profile, filename string) map[string]interface{} {
+	value := map[string]interface{}{"config_file": filename, "config_state": "loaded", "broker_current_profile": cfg.CurrentProfile, "aliyun_current_profile": "", "defaults_differ": false, "cache_readability": "not_checked", "login_state": "not_checked", "cloud_api_verification": "not_checked", "client_id": "", "client_id_source": "unknown", "client_context": "not_applicable", "issuer": ""}
+	if context, err := common.ResolveProfileLoginContext(sts, profile, "", ""); err == nil {
+		value["client_id"] = context.ClientID
+		value["client_id_source"] = context.ClientIDSource
+		value["issuer"] = context.Issuer
+		value["client_context"] = "profile_login"
 	}
+	home, err := os.UserHomeDir()
+	if err == nil {
+		data, e := os.ReadFile(filepath.Join(home, ".aliyun", "config.json"))
+		if e == nil {
+			var root struct {
+				Current string `json:"current"`
+			}
+			if e = json.Unmarshal(data, &root); e == nil {
+				value["aliyun_current_profile"] = root.Current
+				value["defaults_differ"] = root.Current != "" && cfg.CurrentProfile != "" && root.Current != cfg.CurrentProfile
+			} else {
+				value["aliyun_config_state"] = "invalid"
+			}
+		}
+	}
+	value["aws_default_state"] = "not_found"
+	if awsPath, e := common.AWSConfigFile(); e == nil {
+		value["aws_config_file"] = awsPath
+		data, e := os.ReadFile(awsPath)
+		if e == nil {
+			file, e := ini.LoadSources(ini.LoadOptions{AllowNestedValues: true}, data)
+			if e != nil {
+				value["aws_default_state"] = "invalid"
+			} else if file.HasSection("default") {
+				value["aws_default_state"] = "configured_identity_not_verified"
+				command := file.Section("default").Key("credential_process").String()
+				for name := range cfg.Profile {
+					if common.CredentialProcessMatches(command, filename, name) {
+						value["aws_default_idaas_profile"] = name
+						break
+					}
+				}
+			}
+		}
+	}
+	if env := os.Getenv("AWS_PROFILE"); env != "" {
+		value["aws_environment_profile"] = env
+	}
+
+	return value
+}
+
+func listCacheMetadata(category, name string) error {
+	categories := []string{"oidc", "oidc_token", "token_response", "cloud_token"}
+	if category == "" {
+		if name != "" {
+			return fmt.Errorf("specify --category when filtering cache metadata with --name")
+		}
+		utils.Stdout.Printf("Categories: %s\n", strings.Join(categories, ", "))
+		return nil
+	}
+	allowed := false
+	for _, c := range categories {
+		if category == c {
+			allowed = true
+		}
+	}
+	if !allowed {
+		return fmt.Errorf("unknown cache category %q", category)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(filepath.Join(home, constants.ConfigRootDir, constants.ConfigIdaasDir, category))
+	if os.IsNotExist(err) {
+		utils.Stdout.Println("No cache entries.")
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() && (name == "" || strings.Contains(entry.Name(), name)) {
+			info, e := entry.Info()
+			if e != nil {
+				return e
+			}
+			utils.Stdout.Printf("%s\t%d bytes\n", entry.Name(), info.Size())
+		}
+	}
+	return nil
 }
 
 // --- helpers ---
