@@ -657,4 +657,4 @@ $ echo '{ "protocolVersion": 1, "provider": "idaas", "ids": ["default_model"] }'
 
 ### 接入配置兼容性
 
-本开发分支保留现有默认身份、具名 profile 和配置 version=1。AWS 新建具名 profile 按 ARN 分区选择地域，不自动设置 default；已有地域冲突需要明确覆盖。多实例推断歧义及配置写入失败返回错误，不静默换身份。Broker 默认可用 `configure switch --profile <name>` 单独切换。详见 [命令与迁移说明](docs/command-reference_zh.md)。此版本尚未发布，不包含缓存/二次授权问题的修复。
+`0.2.5-beta` 保留现有默认身份、具名 profile 和配置 version=1。AWS 新建具名 profile 按 ARN 分区选择地域，不自动设置 default；已有地域冲突需要明确覆盖。多实例推断歧义及配置写入失败返回错误，不静默换身份。Broker 默认可用 `configure switch --profile <name>` 单独切换。详见 [命令与迁移说明](docs/command-reference_zh.md)。此版本不包含缓存/二次授权问题的修复。

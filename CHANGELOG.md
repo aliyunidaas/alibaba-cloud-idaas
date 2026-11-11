@@ -6,7 +6,7 @@ For published releases, see [GitHub Releases](https://github.com/aliyunidaas/ali
 
 ### v0.2.5-beta
 
-Pending release.
+Released on 2026-11-11. [Release notes](https://github.com/aliyunidaas/alibaba-cloud-idaas/releases/tag/v0.2.5-beta).
 
 - Restored unambiguous cloud discovery when the implicit default profile is non-cloud, while preserving explicit selections and rejecting ambiguous contexts; completed the command argument tables.
 

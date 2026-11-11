@@ -6,7 +6,7 @@
 
 ### v0.2.5-beta
 
-待发布。
+2026-11-11 已发布。[发布说明](https://github.com/aliyunidaas/alibaba-cloud-idaas/releases/tag/v0.2.5-beta)。
 
 - 修复隐式默认指向非 cloud profile 时的无歧义角色发现兜底，保留显式选择与歧义保护，并补齐命令参数表。
 
