@@ -99,26 +99,26 @@ type InferredProfile struct {
 }
 
 // InferFromProfiles reads existing profiles and extracts instance info
-// from the first cloud_account_token profile's AccessTokenProvider.DeviceCode config.
+// deterministically from the selected or unambiguous matching profile.
 // Returns nil if no suitable profile is found.
 func InferFromProfiles(configFilename string) *InferredProfile {
-	cloudConfig, err := config.ReadCloudCredentialConfig(configFilename)
-	if err != nil || cloudConfig == nil {
+	context, err := ResolveRegistrationContext(configFilename, "", "")
+	if err != nil || context.Profile == "" {
 		return nil
 	}
-	for _, sts := range cloudConfig.Profile {
-		if sts.CloudAccount != nil && sts.CloudAccount.AccessTokenProvider != nil {
-			dc := sts.CloudAccount.AccessTokenProvider.OidcTokenProviderDeviceCode
-			if dc != nil && dc.Issuer != "" {
-				return &InferredProfile{
-					Instance: extractDomainFromIssuer(dc.Issuer),
-					ClientId: dc.ClientId,
-					Issuer:   dc.Issuer,
-				}
-			}
-		}
+	cfg, err := config.ReadCloudCredentialConfig(configFilename)
+	if err != nil || cfg == nil {
+		return nil
 	}
-	return nil
+	sts := cfg.Profile[context.Profile]
+	if sts == nil || sts.CloudAccount == nil || sts.CloudAccount.AccessTokenProvider == nil {
+		return nil
+	}
+	dc := sts.CloudAccount.AccessTokenProvider.OidcTokenProviderDeviceCode
+	if dc == nil {
+		return nil
+	}
+	return &InferredProfile{Instance: context.Instance, ClientId: context.ClientID, Issuer: dc.Issuer}
 }
 
 // extractDomainFromIssuer extracts the domain from an issuer URL like

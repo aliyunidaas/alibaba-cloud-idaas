@@ -28,12 +28,12 @@ var (
 	}
 	stringFlagClientId = &cli.StringFlag{
 		Name:  "client-id",
-		Usage: "Broker client application id (default: iap_cloud_idaas_cli)",
+		Usage: "Optional broker client id (explicit > matching profile > iap_cloud_idaas_cli)",
 	}
 	stringFlagConfig = &cli.StringFlag{
 		Name:    "config",
 		Aliases: []string{"c"},
-		Usage:   "IDaaS config file (default ~/.aliyun/alibaba-cloud-idaas.json)",
+		Usage:   "IDaaS config file (env override, otherwise existing legacy ~/.aliyun/alibaba-cloud-idaas.json or ~/.cloud_idaas/idaas-cli.json)",
 	}
 	boolFlagForceNew = &cli.BoolFlag{
 		Name:    "force-new",
@@ -74,13 +74,23 @@ func BuildCommand() *cli.Command {
 
 func runLogin(instance, profile, scope, clientId, configFile string, forceNew bool) error {
 	if instance != "" {
-		return loginByInstance(instance, scope, clientId, forceNew)
+		return loginByInstanceWithConfig(instance, scope, clientId, configFile, forceNew)
 	}
 	return loginByProfile(profile, scope, clientId, configFile, forceNew)
 }
 
 func loginByInstance(instance, scope, clientId string, forceNew bool) error {
-	instance = normalizeDomain(instance)
+	return loginByInstanceWithConfig(instance, scope, clientId, "", forceNew)
+}
+
+func loginByInstanceWithConfig(instance, scope, clientId, configFile string, forceNew bool) error {
+	context, err := common.ResolveRegistrationContext(configFile, instance, clientId)
+	if err != nil {
+		return err
+	}
+	instance = context.Instance
+	clientId = context.ClientID
+	utils.Stdout.Printf("Client ID: %s (source: %s)\n", clientId, context.ClientIDSource)
 	httpClient := utils.BuildHttpClient()
 
 	utils.Stdout.Printf("Discovering instance %s ...\n", instance)
@@ -117,25 +127,11 @@ func loginByProfile(profile, scope, clientId, configFile string, forceNew bool) 
 	if err != nil {
 		return errors.Wrapf(err, "find profile `%s`", profile)
 	}
-	var provider *config.OidcTokenProviderConfig
-	if cloudStsConfig.CloudAccount != nil && cloudStsConfig.CloudAccount.AccessTokenProvider != nil {
-		provider = cloudStsConfig.CloudAccount.AccessTokenProvider
-	} else if cloudStsConfig.OidcToken != nil {
-		provider = cloudStsConfig.OidcToken
-	} else {
-		return errors.New("profile has no OIDC token provider (device_code)")
+	context, err := common.ResolveProfileLoginContext(cloudStsConfig, profile, scope, clientId)
+	if err != nil {
+		return err
 	}
-	if provider.OidcTokenProviderDeviceCode == nil {
-		return errors.New("profile has no device_code provider")
-	}
-	dc := provider.OidcTokenProviderDeviceCode
-	issuer := dc.Issuer
-	if clientId == "" {
-		clientId = dc.ClientId
-	}
-	if scope == "" {
-		scope = dc.Scope
-	}
+	issuer, clientId, scope := context.Issuer, context.ClientID, context.Scope
 	utils.Stdout.Printf("Refreshing login (profile=%s, issuer=%s) ...\n", profile, issuer)
 	utils.Stdout.Println("Complete SSO/MFA in browser ...")
 	_, err = common.DoLogin(issuer, clientId, scope, forceNew)

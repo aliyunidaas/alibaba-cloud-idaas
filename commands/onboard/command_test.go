@@ -40,9 +40,11 @@ func TestGenerateProfilesPreservesDefaultsAndTemplateRoles(t *testing.T) {
 func TestWriteAliyunCliProfilesUsesFirstAliyunProfileAsCurrent(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("AWS_CONFIG_FILE", "")
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", "")
 
 	profiles := []generatedProfile{
-		{Name: "aws-readonly", VendorType: vendorAws},
+		{Name: "aws-readonly", VendorType: vendorAws, RoleARN: "arn:aws:iam::123456789012:role/readonly"},
 		{Name: "aliyun-oss-read", VendorType: vendorAlibaba},
 		{Name: "aliyun-admin", VendorType: vendorAlibaba},
 	}
@@ -78,14 +80,16 @@ func TestWriteAliyunCliProfilesUsesFirstAliyunProfileAsCurrent(t *testing.T) {
 	}
 }
 
-func TestWriteAwsCliProfilesUsesFirstAwsProfileAsDefault(t *testing.T) {
+func TestWriteAwsCliProfilesDoesNotCreateDefault(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("AWS_CONFIG_FILE", "")
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", "")
 
 	profiles := []generatedProfile{
 		{Name: "aliyun-oss-read", VendorType: vendorAlibaba},
-		{Name: "aws-readonly", VendorType: vendorAws},
-		{Name: "aws-admin", VendorType: vendorAws},
+		{Name: "aws-readonly", VendorType: vendorAws, RoleARN: "arn:aws:iam::123456789012:role/readonly"},
+		{Name: "aws-admin", VendorType: vendorAws, RoleARN: "arn:aws:iam::123456789012:role/admin"},
 	}
 	configFilename := filepath.Join(home, ".cloud_idaas", "idaas-cli.json")
 
@@ -103,15 +107,8 @@ func TestWriteAwsCliProfilesUsesFirstAwsProfileAsDefault(t *testing.T) {
 	if firstNamedProfile < 0 {
 		t.Fatalf("AWS config has no named profile sections:\n%s", content)
 	}
-	defaultSection := content[:firstNamedProfile]
-	if !strings.Contains(defaultSection, "[default]") {
-		t.Fatalf("AWS config has no default section:\n%s", content)
-	}
-	if !strings.Contains(defaultSection, "fetch-token --profile aws-readonly") {
-		t.Fatalf("default section does not use first AWS profile:\n%s", defaultSection)
-	}
-	if strings.Contains(defaultSection, "aliyun-oss-read") {
-		t.Fatalf("default section must not use Alibaba Cloud profile:\n%s", defaultSection)
+	if strings.Contains(content, "[default]") {
+		t.Fatal("onboard must not silently create AWS default")
 	}
 	if !strings.Contains(content, "[profile aws-readonly]") || !strings.Contains(content, "[profile aws-admin]") {
 		t.Fatalf("AWS named profiles are incomplete:\n%s", content)
@@ -124,6 +121,8 @@ func TestWriteAwsCliProfilesUsesFirstAwsProfileAsDefault(t *testing.T) {
 func TestWriteAwsCliProfilesPreservesExistingDefault(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("AWS_CONFIG_FILE", "")
+	t.Setenv("AWS_SHARED_CREDENTIALS_FILE", "")
 
 	awsDir := filepath.Join(home, ".aws")
 	if err := os.MkdirAll(awsDir, 0700); err != nil {
@@ -135,7 +134,7 @@ func TestWriteAwsCliProfilesPreservesExistingDefault(t *testing.T) {
 		t.Fatalf("write existing aws config: %v", err)
 	}
 
-	profiles := []generatedProfile{{Name: "aws-readonly", VendorType: vendorAws}}
+	profiles := []generatedProfile{{Name: "aws-readonly", VendorType: vendorAws, RoleARN: "arn:aws:iam::123456789012:role/readonly"}}
 	configFilename := filepath.Join(home, ".cloud_idaas", "idaas-cli.json")
 	if err := writeAwsCliProfiles(profiles, configFilename); err != nil {
 		t.Fatalf("writeAwsCliProfiles() error = %v", err)

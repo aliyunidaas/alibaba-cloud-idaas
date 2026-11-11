@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/agent"
+	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/configure"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/login"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/logout"
 	"github.com/aliyunidaas/alibaba-cloud-idaas/commands/onboard"
@@ -47,6 +48,7 @@ func main() {
 func innerMain() error {
 	commands := []*cli.Command{
 		fetch_token.BuildCommand(),
+		configure.BuildCommand(),
 		onboard.BuildCommand(),
 		login.BuildCommand(),
 		logout.BuildCommand(),
