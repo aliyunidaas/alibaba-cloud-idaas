@@ -6,20 +6,67 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/aliyunidaas/alibaba-cloud-idaas/utils"
 )
 
 // AssumableRole describes the role itself, not the source of its authorization.
 type AssumableRole struct {
-	CloudAccountId              string `json:"cloudAccountId"`
-	CloudAccountRoleId          string `json:"cloudAccountRoleId"`
-	CloudAccountRoleName        string `json:"cloudAccountRoleName"`
-	CloudAccountRoleExternalId  string `json:"cloudAccountRoleExternalId"`
-	CloudAccountVendorType      string `json:"cloudAccountVendorType"`
-	Status                      string `json:"status"`
-	CreatedByPermissionTemplate *bool  `json:"createdByPermissionTemplate"`
+	CloudAccountName                   string `json:"cloudAccountName"`
+	CloudAccountDescription            string `json:"cloudAccountDescription"`
+	CloudPermissionTemplateId          string `json:"cloudPermissionTemplateId"`
+	CloudPermissionTemplateName        string `json:"cloudPermissionTemplateName"`
+	CloudPermissionTemplateDescription string `json:"cloudPermissionTemplateDescription"`
+	CloudAccountRoleDescription        string `json:"cloudAccountRoleDescription"`
+	CloudAccountId                     string `json:"cloudAccountId"`
+	CloudAccountRoleId                 string `json:"cloudAccountRoleId"`
+	CloudAccountRoleName               string `json:"cloudAccountRoleName"`
+	CloudAccountRoleExternalId         string `json:"cloudAccountRoleExternalId"`
+	CloudAccountVendorType             string `json:"cloudAccountVendorType"`
+	Status                             string `json:"status"`
+	CreatedByPermissionTemplate        *bool  `json:"createdByPermissionTemplate"`
+}
+
+// DisplayDescription prefers the template description without changing raw data.
+func (r AssumableRole) DisplayDescription() string {
+	if strings.TrimSpace(r.CloudPermissionTemplateDescription) != "" {
+		return r.CloudPermissionTemplateDescription
+	}
+	return r.CloudAccountRoleDescription
+}
+
+// RoleDisplayCell keeps full text on one terminal line and marks missing values.
+func RoleDisplayCell(value string) string {
+	if strings.TrimSpace(value) == "" {
+		return "-"
+	}
+	var out strings.Builder
+	for _, r := range value {
+		if unicode.IsControl(r) || r == '\u2028' || r == '\u2029' {
+			quoted := strconv.QuoteRune(r)
+			out.WriteString(quoted[1 : len(quoted)-1])
+		} else {
+			out.WriteRune(r)
+		}
+	}
+	return out.String()
+}
+
+// FormatRoleTable provides the same complete role metadata for show and onboard.
+func FormatRoleTable(roles []AssumableRole) string {
+	var out strings.Builder
+	indexWidth := len(fmt.Sprint(len(roles)))
+	fmt.Fprintf(&out, "%-*s  CLOUD ACCOUNT NAME\tCLOUD ACCOUNT DESCRIPTION\tPERMISSION TEMPLATE NAME\tROLE NAME\tDESCRIPTION\n", indexWidth, "#")
+	for i, r := range roles {
+		fmt.Fprintf(&out, "%-*d  %s\t%s\t%s\t%s\t%s\n", indexWidth, i+1,
+			RoleDisplayCell(r.CloudAccountName), RoleDisplayCell(r.CloudAccountDescription),
+			RoleDisplayCell(r.CloudPermissionTemplateName), RoleDisplayCell(r.CloudAccountRoleName),
+			RoleDisplayCell(r.DisplayDescription()))
+	}
+	return out.String()
 }
 
 // AssumableRoleList is the complete result, not a single server page.

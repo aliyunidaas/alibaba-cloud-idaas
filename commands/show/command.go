@@ -175,10 +175,14 @@ func showRoles(instance, scope, clientId, configFile string, preferVpc, jsonOutp
 		return nil
 	}
 	utils.Stdout.Printf("Found %d role(s):\n\n", len(list.Entities))
-	utils.Stdout.Printf("  %-30s %-55s %-15s %-10s %s\n", "NAME", "EXTERNAL ID", "VENDOR", "STATUS", "TEMPLATE-CREATED")
-	for _, r := range list.Entities {
-		utils.Stdout.Printf("  %-30s %-55s %-15s %-10s %s\n",
-			r.CloudAccountRoleName, r.CloudAccountRoleExternalId, r.CloudAccountVendorType, r.Status, common.TemplateCreationLabel(r.CreatedByPermissionTemplate))
+	preview, filename, err := common.PrepareRolePreview(list.Entities)
+	if err != nil {
+		return err
+	}
+	utils.Stdout.Print(preview)
+	utils.Stdout.Println("Use show roles --json with the same instance/client/config options for full metadata, including status, vendor, role ARN and template-created flag.")
+	if filename != "" {
+		utils.Stdout.Printf("Showing the first %d of %d roles. Full numbered role list: %s\n", common.RolePreviewLimit, len(list.Entities), filename)
 	}
 	return nil
 }
