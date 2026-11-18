@@ -210,8 +210,14 @@ func runOnboard(opts *onboardOptions) (runErr error) {
 	if len(roles) == 0 {
 		return errors.New("no assumable cloud roles found for current user.\n  hint: check direct/group role grants and permission template grants, enabled template status and matching usage type")
 	}
-	for _, r := range roles {
-		utils.Stdout.Printf("      - %s\t%s\t[%s]\ttemplate-created=%s\n", r.CloudAccountRoleName, r.CloudAccountRoleExternalId, r.CloudAccountVendorType, common.TemplateCreationLabel(r.CreatedByPermissionTemplate))
+	preview, roleListFile, err := common.PrepareRolePreview(roles)
+	if err != nil {
+		return err
+	}
+	utils.Stdout.Print(preview)
+	utils.Stdout.Println("Numbers refer only to this displayed role list, not profile order. Match profiles by role ARN using show roles --json with the same instance/client/config options.")
+	if roleListFile != "" {
+		utils.Stdout.Printf("Showing the first %d of %d roles. Full numbered role list: %s\n", common.RolePreviewLimit, len(roles), roleListFile)
 	}
 
 	result.Stage = "validate_roles"

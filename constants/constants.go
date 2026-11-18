@@ -12,7 +12,7 @@ var (
 )
 
 const (
-	AlibabaCloudIdaasCliVersion = "0.2.5-beta"
+	AlibabaCloudIdaasCliVersion = "0.2.6-beta"
 
 	DefaultAudienceAlibabaCloudIdaas = "alibaba-cloud-idaas-v2"
 
