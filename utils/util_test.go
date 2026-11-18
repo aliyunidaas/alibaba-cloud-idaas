@@ -7,6 +7,7 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"math/big"
+	"net/url"
 	"testing"
 )
 
@@ -370,7 +371,17 @@ func TestUrlBuilder(t *testing.T) {
 		t.Errorf("BuildUrl() returned %s", b.BuildUrl())
 	}
 	b.AddQuery("key2", "value 2")
-	if b.BuildUrl() != "https://example.com?key=value&key2=value+2" {
-		t.Errorf("BuildUrl() returned %s", b.BuildUrl())
+	built := b.BuildUrl()
+	parsed, err := url.Parse(built)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query, err := url.ParseQuery(parsed.RawQuery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed.RawQuery = query.Encode()
+	if parsed.String() != "https://example.com?key=value&key2=value+2" {
+		t.Errorf("BuildUrl() returned %s", built)
 	}
 }

@@ -35,12 +35,6 @@ func TestStringWithTime_IsExpired(t *testing.T) {
 			description: "should be expired when cached more than 3 days ago",
 		},
 		{
-			name:        "boundary (exactly 3 days)",
-			cacheTime:   time.Now().Add(-72 * time.Hour).UnixMilli(),
-			isExpired:   false,
-			description: "should not be expired at exactly 3 days boundary (uses > not >=)",
-		},
-		{
 			name:        "almost expired (2 days 23 hours)",
 			cacheTime:   time.Now().Add(-71 * time.Hour).UnixMilli(),
 			isExpired:   false,
@@ -57,6 +51,19 @@ func TestStringWithTime_IsExpired(t *testing.T) {
 			}
 		})
 	}
+	t.Run("boundary (exactly 3 days)", func(t *testing.T) {
+		const ttl = 3 * 24 * time.Hour
+		swt := &StringWithTime{CacheTime: time.Now().Add(-ttl).UnixMilli()}
+		before := time.Now().UnixMilli()
+		got := swt.IsExpired()
+		after := time.Now().UnixMilli()
+		// The real clock may advance between arranging the boundary and reading it.
+		lower := before-swt.CacheTime > ttl.Milliseconds()
+		upper := after-swt.CacheTime > ttl.Milliseconds()
+		if got != lower && got != upper {
+			t.Fatalf("boundary result %v outside clock interval [%v, %v]", got, lower, upper)
+		}
+	})
 }
 
 // TestStringWithTime_IsExpiringOrExpired tests the IsExpiringOrExpired method
@@ -80,12 +87,6 @@ func TestStringWithTime_IsExpiringOrExpired(t *testing.T) {
 			description:         "should be expiring when cached more than 1 hour ago",
 		},
 		{
-			name:                "boundary (exactly 1 hour)",
-			cacheTime:           time.Now().Add(-60 * time.Minute).UnixMilli(),
-			isExpiringOrExpired: false,
-			description:         "should not be expiring at exactly 1 hour boundary (uses > not >=)",
-		},
-		{
 			name:                "almost expiring (59 minutes)",
 			cacheTime:           time.Now().Add(-59 * time.Minute).UnixMilli(),
 			isExpiringOrExpired: false,
@@ -102,6 +103,18 @@ func TestStringWithTime_IsExpiringOrExpired(t *testing.T) {
 			}
 		})
 	}
+	t.Run("boundary (exactly 1 hour)", func(t *testing.T) {
+		swt := &StringWithTime{CacheTime: time.Now().Add(-time.Hour).UnixMilli()}
+		before := time.Now().UnixMilli()
+		got := swt.IsExpiringOrExpired()
+		after := time.Now().UnixMilli()
+		lower := before-swt.CacheTime > time.Hour.Milliseconds()
+		upper := after-swt.CacheTime > time.Hour.Milliseconds()
+		if got != lower && got != upper {
+			t.Fatalf("boundary result %v outside clock interval [%v, %v]", got, lower, upper)
+		}
+	})
+
 }
 
 // TestStringWithTime_IsExpiredWithCustomFunc tests the IsExpiredWithCustomFunc method
